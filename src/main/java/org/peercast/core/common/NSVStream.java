@@ -20,7 +20,7 @@ import java.io.InputStream;
 
 /**
  * NSVStream.
- * 
+ *
  * @author giles
  * @version 28-may-2003
  */

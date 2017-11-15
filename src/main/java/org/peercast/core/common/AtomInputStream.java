@@ -14,7 +14,7 @@ import vavi.io.LittleEndianDataInputStream;
 
 
 /**
- * AtomInputStream. 
+ * AtomInputStream.
  *
  * @author <a href="mailto:vavivavi@yahoo.co.jp">Naohide Sano</a> (nsano)
  * @version 0.00 050813 nsano initial version <br>
@@ -38,7 +38,7 @@ public class AtomInputStream {
     /**
      * below two fields will be orver written.
      * @see #childCount
-     * @see #dataLength 
+     * @see #dataLength
      */
     ID4 read() throws IOException {
         ID4 id = readID4Internal();
@@ -83,8 +83,8 @@ public class AtomInputStream {
         return dis.readInt();
     }
 
-    /** 
-     * Just reads an ID4 only. different from {@link #read()}  
+    /**
+     * Just reads an ID4 only. different from {@link #read()}
      */
     ID4 readID4() throws IOException {
 //        checkData(4);

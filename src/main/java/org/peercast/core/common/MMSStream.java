@@ -26,7 +26,7 @@ import org.apache.commons.logging.LogFactory;
 
 /**
  * MMSStream.
- * 
+ *
  * @version 28-may-2003
  * @author giles
  */

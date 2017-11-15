@@ -11,7 +11,7 @@ import java.io.InputStream;
 
 
 /**
- * RawStream. 
+ * RawStream.
  *
  * @author <a href="mailto:vavivavi@yahoo.co.jp">Naohide Sano</a> (nsano)
  * @version 0.00 2005/08/11 nsano initial version <br>

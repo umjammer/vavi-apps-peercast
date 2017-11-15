@@ -13,7 +13,7 @@ import java.util.List;
 
 /**
  * ChanHitSearch.
- * 
+ *
  * @author <a href="mailto:vavivavi@yahoo.co.jp">Naohide Sano</a> (nsano)
  * @version 0.00 050811 nsano initial version <br>
  */
@@ -39,7 +39,7 @@ class ChannelHitSearch {
     }
 
     /** */
-    List<ChannelHit> bestHits = new ArrayList<ChannelHit>();
+    List<ChannelHit> bestHits = new ArrayList<>();
 
     /** */
     InetSocketAddress matchHost;

@@ -22,7 +22,7 @@ import java.util.Arrays;
 
 
 /**
- * ID4. 
+ * ID4.
  *
  * @author <a href="mailto:vavivavi@yahoo.co.jp">Naohide Sano</a> (nsano)
  * @version 0.00 050814 nsano initial version <br>

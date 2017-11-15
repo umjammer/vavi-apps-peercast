@@ -33,7 +33,7 @@ import vavi.xml.util.PrettyPrinter;
 
 /**
  * GnuPacket.
- * 
+ *
  * @author <a href="mailto:vavivavi@yahoo.co.jp">Naohide Sano</a> (nsano)
  * @version 0.00 050811 nsano initial version <br>
  */
@@ -330,7 +330,7 @@ log.debug(String.format("push: 0x%x to %s: ROUTE", index, hostName));
     static final String GNU_OK = "GNUTELLA/0.6 200 OK";
 
     static final String PCX_PCP_CONNECT = "pcp";
-    
+
     static final String PCX_HS_OS = "x-peercast-os";
     static final String PCX_HS_DL = "x-peercast-download";
     static final String PCX_HS_ID = "x-peercast-id";

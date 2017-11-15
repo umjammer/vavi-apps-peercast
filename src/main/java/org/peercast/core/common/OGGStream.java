@@ -25,7 +25,7 @@ import org.apache.commons.logging.LogFactory;
 
 /**
  * OggSubStream.
- * 
+ *
  * @version 28-may-2003
  * @author giles
  */

@@ -25,7 +25,7 @@ import org.apache.commons.logging.LogFactory;
 
 /**
  * ASFObject.
- * 
+ *
  * @version 10-apr-2003
  * @author giles
  */

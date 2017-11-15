@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="Shift_JIS"?>
+<?xml version="1.0" encoding="UTF-8"?>
 
 <!-- ////////////////////////////////////////////////////////////////////// -->
 <!-- Copyright (c) 2006 by Naohide Sano, All rights reserved.               -->
@@ -7,70 +7,63 @@
 <!--                                                                        -->
 <!-- peercast                                                               -->
 <!--                                                                        -->
-<!-- @author	Naohide Sano                                                -->
-<!-- @version	0.00	060928	nsano	initial version                     -->
+<!-- @author Naohide Sano                                                   -->
+<!-- @version 0.00 060928 nsano initial version                             -->
 <!--                                                                        -->
 <!-- ////////////////////////////////////////////////////////////////////// -->
 
-<project default="run" basedir=".">
+<project default="run" basedir="."
+  xmlns:artifact="urn:maven-artifact-ant">
 
-  <!-- プロパティの定義 -->
-  <property file="local.properties" />
-
-  <property name="dir.src" value="src" />
-  <property name="dir.build" value="build" />
-
-  <!-- クラスパスの定義 -->
-  <path id="project.class.path">
-    <pathelement location="${vavi.dir}/java" />
-    <pathelement location="${maven.repo}/commons-logging/jars/commons-logging-1.1-dev.jar" />
-<!--
-    <fileset dir="lib">
-      <include name="*.jar" />
+  <path id="maven-ant-tasks.classpath">
+    <fileset dir="${user.home}/lib/java">
+      <include name="maven-ant-tasks*.jar" />
     </fileset>
--->
+  </path>
+  <typedef resource="org/apache/maven/artifact/ant/antlib.xml" uri="urn:maven-artifact-ant"
+           classpathref="maven-ant-tasks.classpath" /> 
+
+  <property environment="env"/>
+  <property file="local.properties" />
+  <xmlproperty file="pom.xml" />
+
+  <!-- Path Definitions -->
+  <path id="project.class.path">
+    <fileset refid="maven-ant-tasks.dependency.fileset" />
   </path>
 
-  <!-- ターゲットの定義 -->
-
-  <!-- clean -->
-  <target name="clean" description="ビルド環境のクリア">
-    <delete dir="${dir.build}" />
-  </target>
-
   <!-- prepare -->
-  <target name="prepare" description="ビルド環境の準備">
-    <mkdir dir="${dir.build}" />
-  </target>
-
-  <!-- javac -->
-  <target name="compile" depends="prepare" description="コンパイル">
-    <javac debug="on" destdir="${dir.build}" deprecation="true">
-      <classpath refid="project.class.path" />
-      <include name="**/*.java" />
-      <src path="${dir.src}" />
-    </javac>
+  <target name="prepare" description="Preparing">
+    <artifact:pom file="pom.xml" id="maven.project" />
+    <artifact:dependencies fileSetId="maven-ant-tasks.dependency.fileset">
+      <pom refid="maven.project"/>
+    </artifact:dependencies>
+    <artifact:mvn pom="pom.xml">
+      <arg value="-q" />
+      <arg value="clean" />
+      <arg value="package" />
+      <arg value="-DskipTests=true" />
+    </artifact:mvn>
   </target>
 
   <!-- run -->
-  <target name="run" depends="compile" description="プログラムの実行">
+  <target name="run" depends="prepare" description="繝励Ο繧ｰ繝ｩ繝縺ｮ螳溯｡�">
     <java classname="task.NodeTask" fork="yes">
       <classpath>
         <path refid="project.class.path" />
-        <pathelement location="build" />
       </classpath>
     </java>
   </target>
 
   <!-- findbugs -->
-  <target name="findbugs" depends="compile">
+  <target name="findbugs" depends="prepare">
     <taskdef name="findbugs" classname="edu.umd.cs.findbugs.anttask.FindBugsTask"/>
     <findbugs home="${findbugs.home}"
               output="text"
               outputFile="tmp/findbugs.txt" >
       <auxClasspath refid="project.class.path" />
       <sourcePath path="src/java" />
-      <class location="${dir.build}" />
+      <class location="${javac.dest}" />
     </findbugs>
   </target>
 

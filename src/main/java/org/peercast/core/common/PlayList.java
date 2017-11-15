@@ -28,7 +28,7 @@ import vavi.util.Debug;
 
 /**
  * PlayList.
- * 
+ *
  * @author <a href="mailto:vavivavi@yahoo.co.jp">Naohide Sano</a> (nsano)
  * @version 0.00 050811 nsano initial version <br>
  */
@@ -37,10 +37,10 @@ enum PlayList {
     /** */
     T_NONE {
         void write(OutputStream out) {
-            throw new UnsupportedOperationException(); 
+            throw new UnsupportedOperationException();
         }
         void read(InputStream in) throws IOException {
-            throw new UnsupportedOperationException(); 
+            throw new UnsupportedOperationException();
         }
     },
     /** */
@@ -149,7 +149,7 @@ Debug.println("player's url: " + urls[i]);
             }
         }
         void read(InputStream in) throws IOException {
-            throw new UnsupportedOperationException(); 
+            throw new UnsupportedOperationException();
         }
     };
 

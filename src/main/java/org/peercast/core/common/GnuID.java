@@ -16,7 +16,7 @@ import java.util.Random;
 
 /**
  * GUID (extends UUID).
- * 
+ *
  * @author <a href="mailto:vavivavi@yahoo.co.jp">Naohide Sano</a> (nsano)
  * @version 0.00 050811 nsano initial version <br>
  */
@@ -35,7 +35,7 @@ class GnuID {
     }
 
     /**
-     * @param str "23450ABCDEF1..." 32 •¶š‚Ü‚Å‚µ‚©‰ğÍ‚µ‚È‚¢A‚»‚ÌŒãØ‚èÌ‚Ä
+     * @param str "23450ABCDEF1..." 32 ï¿½ï¿½ï¿½ï¿½ï¿½Ü‚Å‚ï¿½ï¿½ï¿½ï¿½ï¿½Í‚ï¿½ï¿½È‚ï¿½ï¿½Aï¿½ï¿½ï¿½ÌŒï¿½Ø‚ï¿½Ì‚ï¿½
      */
     GnuID(String str) {
         if (str == null || str.length() < 32) {

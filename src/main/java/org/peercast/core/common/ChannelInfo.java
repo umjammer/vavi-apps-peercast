@@ -19,7 +19,7 @@ import vavi.util.Singleton;
 
 /**
  * ChanInfo.
- * 
+ *
  * @author <a href="mailto:vavivavi@yahoo.co.jp">Naohide Sano</a> (nsano)
  * @version 0.00 050811 nsano initial version <br>
  */
@@ -317,7 +317,7 @@ class ChannelInfo {
     }
 
     /**
-     * @param idString "23450ABCDEF1..." 32 •¶š‚Ü‚Å‚µ‚©‰ğÍ‚µ‚È‚¢A‚»‚ÌŒãØ‚èÌ‚Ä
+     * @param idString "23450ABCDEF1..." 32 ï¿½ï¿½ï¿½ï¿½ï¿½Ü‚Å‚ï¿½ï¿½ï¿½ï¿½ï¿½Í‚ï¿½ï¿½È‚ï¿½ï¿½Aï¿½ï¿½ï¿½ÌŒï¿½Ø‚ï¿½Ì‚ï¿½
      */
     void initNameID(final String idString) {
         init();
@@ -335,16 +335,16 @@ Debug.println("id: " + id + ", " + name);
         bitrate = 0;
         contentType = ContentType.UNKNOWN;
         srcProtocol = Protocol.UNKNOWN;
-        id = new GnuID(); // TODO –³‘Ê‚È‹C‚ª...
+        id = new GnuID(); // TODO ï¿½ï¿½ï¿½Ê‚È‹Cï¿½ï¿½...
         id.clear();
         url = null;
         genre = null;
         comment = null;
-        track = new TrackInfo(); // TODO –³‘Ê‚È‹C‚ª...
+        track = new TrackInfo(); // TODO ï¿½ï¿½ï¿½Ê‚È‹Cï¿½ï¿½...
         lastPlayStart = 0;
         lastPlayEnd = 0;
         numSkips = 0;
-        bcID = new GnuID(); // TODO –³‘Ê‚È‹C‚ª...
+        bcID = new GnuID(); // TODO ï¿½ï¿½ï¿½Ê‚È‹Cï¿½ï¿½...
         bcID.clear();
         createdTime = 0;
     }

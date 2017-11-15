@@ -382,7 +382,7 @@ abstract class Peercast {
 Debug.println("number: " + number);
         String xpath = String.format("/html/body/div/table/tr/td/div[2]/table/tr[%d]/td[2]/a/@href", number);
 
-        Scraper<URL, String> scraper = new SimpleURLScraper<String>(new StringSimpleXPathScraper(xpath));
+        Scraper<URL, String> scraper = new SimpleURLScraper<>(new StringSimpleXPathScraper(xpath));
         String url = scraper.scrape(new URL(urlString));
 //      String url = "peercast://pls/69AED3D9586F089E4D832A2450158498?tip=61.202.103.86:7144";
 Debug.println("url: " + url);
@@ -393,7 +393,7 @@ Debug.println("url: " + url);
                 url = url.substring(11);
             }
         }
-        
+
         ChannelInfo chanInfo = new ChannelInfo();
         serventManager.procConnectArgs(url, chanInfo);
         channelManager.findAndPlayChannel(chanInfo, false);

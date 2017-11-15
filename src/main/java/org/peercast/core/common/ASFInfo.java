@@ -8,7 +8,7 @@ package org.peercast.core.common;
 
 
 /**
- * ASFInfo. 
+ * ASFInfo.
  *
  * @author <a href="mailto:vavivavi@yahoo.co.jp">Naohide Sano</a> (nsano)
  * @version 0.00 050811 nsano initial version <br>

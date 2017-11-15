@@ -1,4 +1,5 @@
-<?xml version="1.0" encoding="UTF-8"?><project>
+<?xml version="1.0" encoding="UTF-8"?><project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>vavi</groupId>
   <artifactId>vavi-net-peercast</artifactId>
@@ -10,31 +11,32 @@
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
         <configuration>
-          <source>1.6</source>
-          <target>1.6</target>
+          <source>1.8</source>
+          <target>1.8</target>
+          <encoding>UTF-8</encoding>
         </configuration>
       </plugin>
     </plugins>
   </build>
   <dependencies>
-  	<dependency>
-  		<groupId>junit</groupId>
-  		<artifactId>junit</artifactId>
-  		<version>4.5</version>
-  		<scope>test</scope>
-  		<optional>false</optional>
-  	</dependency>
-  	<dependency>
-  		<groupId>vavi</groupId>
-  		<artifactId>vavi-util-screenscraping</artifactId>
-  		<version>1.0.0</version>
-  		<optional>false</optional>
-  	</dependency>
-  	<dependency>
-  		<groupId>vavi</groupId>
-  		<artifactId>vavi-commons-sandbox</artifactId>
-  		<version>0.3.0</version>
-  		<optional>false</optional>
-  	</dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.5</version>
+      <scope>test</scope>
+      <optional>false</optional>
+    </dependency>
+    <dependency>
+      <groupId>vavi</groupId>
+      <artifactId>vavi-util-screenscraping</artifactId>
+      <version>1.0.1</version>
+      <optional>false</optional>
+    </dependency>
+    <dependency>
+      <groupId>vavi</groupId>
+      <artifactId>vavi-commons-sandbox</artifactId>
+      <version>0.3.1</version>
+      <optional>false</optional>
+    </dependency>
   </dependencies>
 </project>

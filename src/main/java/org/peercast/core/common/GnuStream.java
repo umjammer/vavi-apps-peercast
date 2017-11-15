@@ -97,18 +97,18 @@ log.debug(String.format("ping out %02x%02x%02x%02x", ping.id.id[0], ping.id.id[1
             packetsOut++;
             Peercast.getInstance().stats.add(Stats.STAT.NUMPACKETSOUT);
             Peercast.getInstance().stats.add(packet.func.getOutStat());
-            
+
             DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
             dos.write(packet.id.id, 0, 16);
             dos.writeByte(packet.func.getNumber()); // ping func
             dos.writeByte((int) packet.ttl); // ttl
             dos.writeByte(packet.hops); // hops
             dos.writeInt(packet.len); // len
-            
+
             if (packet.len != 0) {
                 dos.write(packet.data, 0, packet.len);
             }
-            
+
             Peercast.getInstance().stats.add(Stats.STAT.PACKETDATAOUT, 23 + packet.len);
         }
     }
@@ -117,21 +117,21 @@ log.debug(String.format("ping out %02x%02x%02x%02x", ping.id.id[0], ping.id.id[1
     synchronized boolean readPacket(GnuPacket packet) throws IOException {
         packetsIn++;
         Peercast.getInstance().stats.add(Stats.STAT.NUMPACKETSIN);
-        
+
         DataInputStream dis = new DataInputStream(socket.getInputStream());
         dis.read(packet.id.id, 0, 16);
         packet.func = findGnuFunc(dis.readByte());
         packet.ttl = dis.readByte();
         packet.hops = dis.readByte();
         packet.len = dis.readInt();
-        
+
         if ((packet.hops >= 1) && (packet.hops <= 10)) {
             Peercast.getInstance().stats.add(Stats.STAT.values()[packet.hops - 1]);
         }
-        
+
         Peercast.getInstance().stats.add(Stats.STAT.PACKETDATAIN, 23 + packet.len);
         Peercast.getInstance().stats.add(packet.func.getInStat());
-        
+
         if (packet.len != 0) {
             if (packet.len > GnuPacket.MAX_DATA) {
                 while (packet.len-- > 0) {
@@ -141,7 +141,7 @@ log.debug(String.format("ping out %02x%02x%02x%02x", ping.id.id[0], ping.id.id[1
             }
             dis.read(packet.data, 0, packet.len);
         }
-        
+
         return true;
     }
 

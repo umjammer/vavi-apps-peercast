@@ -62,7 +62,7 @@ class BroadcastState {
 }
 
 /**
- * 
+ *
  * @version 1-mar-2004
  * @author giles
  */
@@ -305,7 +305,7 @@ class PCPStream extends ChannelStream {
     static Log log = LogFactory.getLog(PCPStream.class);
 
     PCPStream(GnuID rid) {
-        routeList = new ArrayList<GnuID>(1000);
+        routeList = new ArrayList<>(1000);
         init(rid);
     }
 
@@ -712,7 +712,7 @@ if (pack.data == null) { // TODO check initialize
 
     /** */
     private void readChanAtoms(AtomInputStream atomIn, int childCount, BroadcastState bcs) throws IOException {
-        ChannelInfo newInfo = new ChannelInfo(); // TODO –³‘Ê‚È‹C‚ª...
+        ChannelInfo newInfo = new ChannelInfo(); // TODO ï¿½ï¿½ï¿½Ê‚È‹Cï¿½ï¿½...
 
         Channel ch = chanelManager.findChannelByID(bcs.chanID);
         ChannelHitList chl = chanelManager.findHitListByID(bcs.chanID);
@@ -868,7 +868,7 @@ log.debug(String.format("PCP bcst: group=%d, hops=%d, ver=%d, from=%s, dest=%s",
     }
 
     /**
-     * @return  
+     * @return
      */
     private int procAtom(AtomInputStream atomIn, AtomOutputStream atomOut, ID4 id, int childCount, int dataLength, BroadcastState bcs) throws IOException {
         int result = 0;

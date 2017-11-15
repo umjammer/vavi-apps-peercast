@@ -46,7 +46,7 @@ import vavi.util.win32.WindowsProperties;
 
 /**
  * ServHost.
- * 
+ *
  * @version 4-apr-2002
  * @author giles
  */
@@ -152,7 +152,7 @@ class ServFilter {
             return false;
         }
         return true;
-    }    
+    }
 
     void setMask(String mask) {
         String[] ip = mask.split("\\.");
@@ -403,7 +403,7 @@ public class ServentManager extends Singleton {
 
     /** */
     void clearDeadServiceHost(InetSocketAddress address, ServHost.Type type) {
-        List<ServHost> tempServiceHosts = new ArrayList<ServHost>(serviceHosts);
+        List<ServHost> tempServiceHosts = new ArrayList<>(serviceHosts);
         for (ServHost serviceHost : tempServiceHosts) {
             if (serviceHost.type.equals(type) && serviceHost.address.equals(address)) {
                 serviceHosts.remove(serviceHost);
@@ -413,7 +413,7 @@ public class ServentManager extends Singleton {
 
     /** */
     void clearServiceHosts(ServHost.Type type) {
-        List<ServHost> tempServiceHosts = new ArrayList<ServHost>(serviceHosts);
+        List<ServHost> tempServiceHosts = new ArrayList<>(serviceHosts);
         for (ServHost serviceHost : tempServiceHosts) {
             if (serviceHost.type.equals(type) || type.equals(ServHost.Type.NONE)) {
                 serviceHosts.remove(serviceHost);
@@ -591,7 +591,7 @@ public class ServentManager extends Singleton {
         for (Servent servent : servents) {
             if (servent.isConnected() &&
                 servent.type.equals(type) &&
-                servent.isPrivate() == priv && 
+                servent.isPrivate() == priv &&
                 (currentTime - servent.lastConnect) >= uptime) {
                 count++;
             }
@@ -1027,7 +1027,7 @@ public class ServentManager extends Singleton {
 
             rootMsg = iniFile.getProperty("Server.rootMsg", "");
             networkID = new GnuID(iniFile.getProperty("Server.networkID", "00000000000000000000000000000000"));
-            authType = iniFile.getProperty("Server.authType").equals("cookie") ? AuthType.COOKIE : AuthType.HTTPBASIC; // cookie/http-basic 
+            authType = iniFile.getProperty("Server.authType").equals("cookie") ? AuthType.COOKIE : AuthType.HTTPBASIC; // cookie/http-basic
 
             neverExpire = iniFile.getProperty("Server.cookiesExpire").equals("never"); // never/session
 
@@ -1098,7 +1098,7 @@ public class ServentManager extends Singleton {
             hit.remoteAddresses[1] = hit.getAddress();
             hit.channelID = info.id;
             hit.receiver = true;
-    
+
             if (info.name != null) {
                 channelManager.addHit(hit);
 
@@ -1159,7 +1159,7 @@ Debug.printStackTrace(e);
     }
 
     /**
-     * @param url sid?foo=var... 
+     * @param url sid?foo=var...
      */
     boolean getChannel(String url, ChannelInfo info, boolean relay) {
         ChannelManager channelManager = Singleton.getInstance(ChannelManager.class);
@@ -1222,8 +1222,8 @@ Debug.println("url: " + url);
     }
 
     /**
-     * url Ç©ÇÁÉpÉâÉÅÅ[É^ÇéÊÇËèoÇµÇƒê›íËÇµÇ‹Ç∑ÅB
-     * TODO move to ChanInfo 
+     * url ÔøΩÔøΩÔøΩÔøΩpÔøΩÔøΩÔøΩÔøΩÔøΩ[ÔøΩ^ÔøΩÔøΩÔøΩÔøΩÔøΩoÔøΩÔøΩÔøΩƒê›íËÇµÔøΩ‹ÇÔøΩÔøΩB
+     * TODO move to ChanInfo
      */
     void procConnectArgs(String url, ChannelInfo info) {
 
@@ -1237,7 +1237,7 @@ Debug.println("url: " + url);
         } else {
             url = url.substring(questionIndex + 1);
         }
-        
+
         StringTokenizer st = new StringTokenizer(url, "&");
         while (st.hasMoreTokens()) {
             String pair = st.nextToken();
@@ -1791,9 +1791,9 @@ log.error(e);
 
     Thread serverThread, idleThread;
 
-    List<Servent> servents = new ArrayList<Servent>();
+    List<Servent> servents = new ArrayList<>();
 
-    List<ServHost> serviceHosts = new ArrayList<ServHost>();
+    List<ServHost> serviceHosts = new ArrayList<>();
 
     @Deprecated
     String password = "";
@@ -1876,13 +1876,13 @@ log.error(e);
 
     int notifyMask = 0xffff;
 
-    List<GnuID> replyIDs = new ArrayList<GnuID>(500);
+    List<GnuID> replyIDs = new ArrayList<>(500);
 
     GnuID sessionID = new GnuID();
 
-    List<ServFilter> filters = new ArrayList<ServFilter>();
+    List<ServFilter> filters = new ArrayList<>();
 
-    List<Cookie> cookieList = new ArrayList<Cookie>();
+    List<Cookie> cookieList = new ArrayList<>();
 
     // cookieList.
     boolean neverExpire;

@@ -13,7 +13,7 @@ import java.util.List;
 
 /**
  * ChanPacketBuffer.
- * 
+ *
  * @author <a href="mailto:vavivavi@yahoo.co.jp">Naohide Sano</a> (nsano)
  * @version 0.00 050811 nsano initial version <br>
  */
@@ -217,7 +217,7 @@ class ChannelPacketBuffer {
     }
 
     /** */
-    private List<ChannelPacket> packets = new ArrayList<ChannelPacket>();
+    private List<ChannelPacket> packets = new ArrayList<>();
 
     /** */
     private volatile int lastPos, firstPos, safePos;

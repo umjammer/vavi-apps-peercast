@@ -23,7 +23,7 @@ import vavi.util.Singleton;
 
 /**
  * ChannelManager.
- * 
+ *
  * @author <a href="mailto:vavivavi@yahoo.co.jp">Naohide Sano</a> (nsano)
  * @version 0.00 050811 nsano initial version <br>
  */
@@ -80,7 +80,7 @@ log.debug("ChanMgr is quitting..");
     }
 
     /**
-     * @param name case insesitive 
+     * @param name case insesitive
      */
     Channel findChannelByName(String name) {
         for (Channel channel : channels) {
@@ -124,7 +124,7 @@ log.debug("ChanMgr is quitting..");
 
     /** */
     List<Channel> findChannels(ChannelInfo info, int max) {
-        List<Channel> result = new ArrayList<Channel>();
+        List<Channel> result = new ArrayList<>();
         for (Channel channel : channels) {
             if (channel.isActive()) {
                 if (channel.info.match(info)) {
@@ -140,7 +140,7 @@ log.debug("ChanMgr is quitting..");
 
     /** */
     List<Channel> findChannelsByStatus(int max, Channel.Status status) {
-        List<Channel> result = new ArrayList<Channel>();
+        List<Channel> result = new ArrayList<>();
         for (Channel channel : channels) {
             if (channel.isActive()) {
                 if (channel.status == status) {
@@ -620,9 +620,9 @@ log.debug(String.format("Executing: %s", filename));
         return null;
     }
 
-    List<Channel> channels = new ArrayList<Channel>();
+    List<Channel> channels = new ArrayList<>();
 
-    List<ChannelHitList> channelHitLists = new ArrayList<ChannelHitList>();
+    List<ChannelHitList> channelHitLists = new ArrayList<>();
 
     GnuID broadcastID = new GnuID();
 

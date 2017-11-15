@@ -19,7 +19,7 @@ import vavi.util.Singleton;
 
 /**
  * ChanHitList.
- * 
+ *
  * @author <a href="mailto:vavivavi@yahoo.co.jp">Naohide Sano</a> (nsano)
  * @version 0.00 050811 nsano initial version <br>
  */
@@ -350,7 +350,7 @@ log.debug(String.format("*** Del hit: %s , %s", hit.remoteAddresses[0], hit.remo
 
     ChannelInfo info;
 
-    List<ChannelHit> hits = new ArrayList<ChannelHit>() /* {
+    List<ChannelHit> hits = new ArrayList<>() /* {
         public boolean add(ChanHit o) {
             if (o.remoteAddresses[0] == null) {
 new Exception("*** DUMMY *** : " + o.getAddress()).printStackTrace();

@@ -63,7 +63,7 @@ import vavi.xml.util.PrettyPrinter;
 
 /**
  * Servent handles the actual connection between clients
- * 
+ *
  * @version 4-apr-2002
  * @author giles
  */
@@ -171,7 +171,7 @@ class Servent {
                         public int compare(ChannelHitList c1, ChannelHitList c2) {
                             return c1.info.bitrate - c2.info.bitrate;
                         }
-                    }; 
+                    };
                 } else {
                     return new Comparator<ChannelHitList>() {
                         public int compare(ChannelHitList c1, ChannelHitList c2) {
@@ -287,7 +287,7 @@ class Servent {
     Servent(int index) {
         outPacketsPri = new GnuPacketBuffer(MAX_OUTPACKETS);
         outPacketsNorm = new GnuPacketBuffer(MAX_OUTPACKETS);
-        seenIDs = new ArrayList<GnuID>();
+        seenIDs = new ArrayList<>();
         serventIndex = index;
         remoteID = new GnuID();
         networkID = new GnuID();
@@ -399,7 +399,7 @@ class Servent {
     }
 
     /**
-     * @param usePrimary use primary 
+     * @param usePrimary use primary
      */
     synchronized boolean outputPacket(GnuPacket packet, boolean usePrimary) {
 
@@ -1357,13 +1357,13 @@ Debug.println("outputProtocol: " + outputProtocol);
     }
 
     /** */
-    private Runnable givProc = new Runnable() { 
+    private Runnable givProc = new Runnable() {
         public void run() {
             Servent servent = serventManager.allocServent();
             try {
                 servent.handshakeGiv(givID);
                 servent.handshakeIncoming();
-                
+
                 servent.kill();
             } catch (IOException e) {
                 log.error(String.format("GIV: %s", e.getMessage()));
@@ -1714,33 +1714,33 @@ log.debug(String.format("PCP outgoing reply: %s", id.toString()));
     }
 
     /** */
-    private Runnable outgoingProc = new Runnable() { 
+    private Runnable outgoingProc = new Runnable() {
         public void run() {
             log.debug("COUT started");
-            
+
             GnuID noID = new GnuID();
             pcpStream = new PCPStream(noID);
-            
+
             setStatus(Status.WAIT);
-            
+
             if (channelManager.isBroadcasting() && serventManager.autoServe) {
                 ChannelHit bestHit = new ChannelHit();
                 ChannelHitSearch chs = new ChannelHitSearch();
-                
+
                 do {
                     bestHit.init();
-                    
+
                     if (serventManager.rootHost.length() == 0) {
                         break;
                     }
-                    
+
                     if (pushSock != null) {
                         sock = pushSock;
                         pushSock = null;
                         bestHit.setAddress((InetSocketAddress) sock.getRemoteSocketAddress()); // TODO remote?
                         break;
                     }
-                    
+
                     noID = new GnuID();
                     ChannelHitList chl = channelManager.findHitListByID(noID);
                     if (chl != null) {
@@ -1758,14 +1758,14 @@ log.debug(String.format("PCP outgoing reply: %s", id.toString()));
                             chs.trackersOnly = true;
                             chl.pickHits(chs);
                         }
-                        
+
                         if (chs.bestHits.size() != 0) {
                             bestHit = chs.bestHits.get(0);
                         }
                     }
-                    
+
                     long currentTime = System.currentTimeMillis();
-                    
+
                     if (bestHit.getAddress() == null && (currentTime - channelManager.lastYPConnect) > ServentManager.MIN_YP_RETRY) {
                         bestHit.setAddress(new InetSocketAddress(serventManager.rootHost, GnuPacket.DEFAULT_PORT));
                         bestHit.yp = true;
@@ -1775,60 +1775,60 @@ log.debug(String.format("PCP outgoing reply: %s", id.toString()));
                         Thread.sleep(Peercast.idleSleepTime);
                     } catch (InterruptedException e) {
                     }
-                    
+
                 } while (bestHit.getAddress() == null);
-                
+
                 if (bestHit.getAddress() == null) { // give up
                     log.error("COUT giving up");
                     return;
                 }
-                
+
                 String bestHitHostName = bestHit.getAddress().getHostName();
-                
+
                 int error = 0;
                 try {
-                    
+
                     log.debug(String.format("COUT to %s: Connecting..", bestHitHostName));
-                    
+
                     if (sock == null) {
                         setStatus(Status.CONNECTING);
                         sock = new Socket();
                         sock.connect(bestHit.getAddress());
                     }
-                    
+
                     sock.setSoTimeout(30 * 1000);
-                    
+
                     setStatus(Status.HANDSHAKE);
-                    
+
                     InetSocketAddress remoteAddress = (InetSocketAddress) sock.getRemoteSocketAddress();
                     AtomInputStream atomIn = new AtomInputStream(sock.getInputStream());
                     AtomOutputStream atomOut = new AtomOutputStream(sock.getOutputStream());
                     atomOut.writeInt(PCPStream.PCP_CONNECT, 1);
                     handshakeOutgoingPCP(atomIn, atomOut, remoteAddress, remoteID, agent, bestHit.yp);
-                    
+
                     setStatus(Status.CONNECTED);
-                    
+
                     log.debug(String.format("COUT to %s: OK", bestHitHostName));
-                    
+
                     pcpStream.init(remoteID);
-                    
+
                     BroadcastState bcs = new BroadcastState();
                     error = 0;
                     while (error == 0 && sock.getInputStream().available() > 0 && serventManager.autoServe) {
                         error = pcpStream.readPacket(sock.getInputStream(), sock.getOutputStream(), bcs);
-                        
+
                         try {
                             Thread.sleep(Peercast.idleSleepTime);
                         } catch (InterruptedException e) {
                         }
-                        
+
                         if (!channelManager.isBroadcasting()) {
                             error = PCPStream.PCP_ERROR_OFFAIR;
                         }
                         if (Peercast.getInstance().isQuitting) {
                             error = PCPStream.PCP_ERROR_SHUTDOWN;
                         }
-                        
+
                         if (pcpStream.nextRootPacket != 0) {
                             if (System.currentTimeMillis() > pcpStream.nextRootPacket + 30) {
                                 error = PCPStream.PCP_ERROR_NOROOT;
@@ -1836,14 +1836,14 @@ log.debug(String.format("PCP outgoing reply: %s", id.toString()));
                         }
                     }
                     setStatus(Status.CLOSING);
-                    
+
                     pcpStream.flush(sock.getOutputStream());
-                    
+
                     error += PCPStream.PCP_ERROR_QUIT;
                     atomOut.writeInt(PCPStream.PCP_QUIT, error);
-                    
+
                     log.error(String.format("COUT to %s closed: %d", bestHitHostName, error));
-                    
+
                     // } catch (TimeoutException e) {
                     // log.error(String.format("COUT to %s: timeout (%s)", ipStr, e.getMessage()));
                     // sv.setStatus(STATUS.S_TIMEOUT);
@@ -1851,28 +1851,28 @@ log.debug(String.format("PCP outgoing reply: %s", id.toString()));
                     log.error(String.format("COUT to %s: %s", bestHitHostName, e.getMessage()));
                     setStatus(Status.ERROR);
                 }
-                
+
                 try {
                     if (sock != null) {
                         sock.close();
                         sock = null;
                     }
-                    
+
                 } catch (IOException e) {
                 }
-                
+
                 // don`t discard this hit if we caused the disconnect (stopped broadcasting)
                 if (error != (PCPStream.PCP_ERROR_QUIT + PCPStream.PCP_ERROR_OFFAIR)) {
                     channelManager.deadHit(bestHit);
                 }
-                
-                
+
+
                 try {
                     Thread.sleep(Peercast.idleSleepTime);
                 } catch (InterruptedException e) {
                 }
             }
-            
+
             try {
                 kill();
             } catch (IOException e) {
@@ -1880,13 +1880,13 @@ log.debug(String.format("PCP outgoing reply: %s", id.toString()));
             log.debug("COUT ended");
         }
     };
-    
+
     /** */
     void processServent(HttpServletRequest request, HttpServletResponse response) throws IOException {
         setStatus(Status.HANDSHAKE);
-        
+
         handshakeIn(request, response);
-            
+
         if (sock == null) {
             throw new IOException("Servent has no socket");
         }
@@ -2118,7 +2118,7 @@ Debug.println("head: " + sendHead + ", body: " + sendData);
     }
 
     /**
-     * @param interval 
+     * @param interval
      */
     void sendRawMetaChannel(int interval) {
 
@@ -5141,7 +5141,7 @@ Debug.println("one request done");
 
                 // relays
                 td = Peercast.newElement("td");
-                td.setTextContent(String.format("%d", c.totalRelays())); // TODO orig is numRelays 
+                td.setTextContent(String.format("%d", c.totalRelays())); // TODO orig is numRelays
                 // listeners
                 td = Peercast.newElement("td");
                 td.setTextContent(String.format("%d", c.totalListeners())); // TODO orig is numListeners
@@ -5579,7 +5579,7 @@ Debug.println("uri: " + fn);
             loginMount = mount;
         }
 
-        handshakeICY(request, response, Channel.SourceType.ICECAST, isHttp); 
+        handshakeICY(request, response, Channel.SourceType.ICECAST, isHttp);
 //      sock = null; // socket is taken over by channel, so don`t close it
     }
 
@@ -5628,10 +5628,10 @@ Debug.println(String.format("bitrate: %b, relay: %b, direct: %b, play: %b, chann
 
         try {
             setStatus(Status.HANDSHAKE);
-    
+
             is = sock.getInputStream();
             os = sock.getOutputStream();
-    
+
             HttpContext requestContext = new HttpContext();
             HttpServletRequestAdapter request = new HttpServletRequestAdapter(requestContext);
             requestContext.setRemoteHost(((InetSocketAddress) sock.getRemoteSocketAddress()).getHostName());
@@ -5639,8 +5639,8 @@ Debug.println(String.format("bitrate: %b, relay: %b, direct: %b, play: %b, chann
             requestContext.setLocalHost(((InetSocketAddress) sock.getLocalSocketAddress()).getHostName());
             requestContext.setLocalPort(((InetSocketAddress) sock.getLocalSocketAddress()).getPort());
             HttpUtil.parseRequestHeader(is, requestContext);
-    
-            HttpContext responseContext = new HttpContext(); 
+
+            HttpContext responseContext = new HttpContext();
             responseContext.setRemoteHost(((InetSocketAddress) sock.getRemoteSocketAddress()).getHostName());
             responseContext.setRemotePort(((InetSocketAddress) sock.getRemoteSocketAddress()).getPort());
             responseContext.setLocalHost(((InetSocketAddress) sock.getLocalSocketAddress()).getHostName());
@@ -5648,16 +5648,16 @@ Debug.println(String.format("bitrate: %b, relay: %b, direct: %b, play: %b, chann
             responseContext.setOutputStream(os);
             responseContext.setProtocol(requestContext.getProtocol());
             HttpServletResponseAdapter response = new HttpServletResponseAdapter(responseContext);
-    
+
             String protocol = requestContext.getProtocol().getName();
-    
+
             log.debug(String.format("Connect from %s '%s'", requestContext.getRemoteHost() + ":" + requestContext.getRemotePort(), protocol));
             if ("RTSP".equalsIgnoreCase(protocol)) {
 //              log.debug(String.format("RTSP from %s '%s'", requestContext.getRemoteHost() + ":" + requestContext.getRemotePort(), protocol));
                 handshakeRTSP(request, response);
             } else if ("HTTP".equalsIgnoreCase(protocol)) {
 //              log.debug(String.format("HTTP from %s '%s'", requestContext.getRemoteHost() + ":" + requestContext.getRemotePort(), protocol));
-                handshakeHTTP_get(request, response); 
+                handshakeHTTP_get(request, response);
             } else if ("GIV".equalsIgnoreCase(protocol)) {
 //              log.debug(String.format("Connect from %s '%s'", requestContext.getRemoteHost() + ":" + requestContext.getRemotePort(), protocol));
                 handshakeHTTP_giv(request, response);
@@ -5692,7 +5692,7 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
     /**
      * /stream/
      * /channel/
-     * @param url sid?foo=var... 
+     * @param url sid?foo=var...
      */
     void triggerChannel(HttpServletRequest request, HttpServletResponse response, String url, ChannelInfo.Protocol proto, boolean relay) throws IOException {
 
@@ -5822,7 +5822,7 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
 
     /**
      * Warning: testing RTSP/RTP stuff below. .. moved over to seperate app now.
-     * 
+     *
      * @throws IOException
      */
     void handshakePOST(HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -6252,7 +6252,7 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
 
                 } else if (cmd.equals("chan")) {
 
-                    List<Channel> targetChannels = new ArrayList<Channel>();
+                    List<Channel> targetChannels = new ArrayList<>();
                     ChannelInfo info = new ChannelInfo();
                     List<Channel> channels = channelManager.findChannels(info, ChannelManager.MAX_CHANNELS);
 
@@ -6547,7 +6547,7 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
     /**
      * Injects response header values into info
      * @param context
-     * @param info 
+     * @param info
      * @param servent
      */
     static void readICYHeader(HttpContext context, ChannelInfo info, Servent servent) {

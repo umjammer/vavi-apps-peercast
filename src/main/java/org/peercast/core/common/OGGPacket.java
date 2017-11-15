@@ -11,7 +11,7 @@ import java.io.IOException;
 
 /**
  * OggPacket.
- * 
+ *
  * @author <a href="mailto:vavivavi@yahoo.co.jp">Naohide Sano</a> (nsano)
  * @version 0.00 050811 nsano initial version <br>
  */

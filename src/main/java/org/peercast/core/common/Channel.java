@@ -40,7 +40,7 @@ import vavi.util.Singleton;
 
 /**
  * Channel.
- * 
+ *
  * @version 4-apr-2002
  * @author giles
  */
@@ -547,7 +547,7 @@ Debug.println("address: " + sourceHost.getAddress() + ": @" + sourceHost.hashCod
     }
 
     /**
-     * @return 0 success 
+     * @return 0 success
      */
     int handshakeFetch() throws IOException {
 //      String sidStr = ServMgr.sessionID.toString();
@@ -560,7 +560,7 @@ Debug.println("address: " + sourceHost.getAddress() + ": @" + sourceHost.hashCod
         requestContext.setProtocol(new HttpProtocol());
         requestContext.setHeader(GnuPacket.PCX_HS_POS, String.valueOf(streamPos));
         requestContext.setHeader(GnuPacket.PCX_HS_PCP, "1");
-        
+
         HttpContext responseContext = HttpUtil.postRequest(requestContext, sock);
 
 log.debug("Got response: " + responseContext.getStatus());
@@ -640,7 +640,7 @@ log.debug("Got response: " + responseContext.getStatus());
         if (force || (currentTime - lastTrackerUpdate) > 30) {
             ChannelPacket packet = new ChannelPacket();
 
-            ByteArrayOutputStream baos = new ByteArrayOutputStream(); // 
+            ByteArrayOutputStream baos = new ByteArrayOutputStream(); //
 
             AtomOutputStream atom = new AtomOutputStream(baos);
 
@@ -702,7 +702,7 @@ log.debug("Got response: " + responseContext.getStatus());
 
                     ChannelPacket packet = new ChannelPacket();
 
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream(); // 
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream(); //
 
                     AtomOutputStream atom = new AtomOutputStream(baos);
 
