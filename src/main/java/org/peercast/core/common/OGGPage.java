@@ -10,9 +10,10 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import static java.lang.System.getLogger;
 
 
 /**
@@ -23,7 +24,7 @@ import org.apache.commons.logging.LogFactory;
  */
 class OGGPage {
 
-    Log log = LogFactory.getLog(OGGPage.class);
+    private static final Logger logger = getLogger(OGGPage.class.getName());
 
     static final int MAX_BODYLEN = 65536;
 
@@ -54,7 +55,7 @@ class OGGPage {
             int b = dis.readInt();
             return a != 0 || b == 0;
         } catch (IOException e) {
-            throw (RuntimeException) new IllegalStateException().initCause(e);
+            throw (RuntimeException) new IllegalStateException(e);
         }
     }
 
@@ -66,7 +67,7 @@ class OGGPage {
             dis.skip(14);
             return dis.readInt();
         } catch (IOException e) {
-            throw (RuntimeException) new IllegalStateException().initCause(e);
+            throw (RuntimeException) new IllegalStateException(e);
         }
     }
 
@@ -85,7 +86,7 @@ class OGGPage {
                 }
             }
             if (!gotOgg) {
-                log.debug("Skipping OGG packet");
+                logger.log(Level.DEBUG, "Skipping OGG packet");
             }
         }
 
@@ -124,16 +125,16 @@ class OGGPage {
         int page = dis.readInt(); // 14
         int id = dis.readInt(); // 18
 
-        log.debug(String.format("OGG Packet - page %d, id = %x - %s %s %s - %d:%d - %d segs, %d bytes",
-                                page,
-                                id,
-                                (data[5] & 0x1) != 0 ? "cont" : "new",
-                                (data[5] & 0x2) != 0 ? "bos" : "",
-                                (data[5] & 0x4) != 0 ? "eos" : "",
-                                (int) (granPos >> 32),
-                                (int) (granPos & 0xffffffff),
-                                numSegs,
-                                headLen + bodyLen));
+        logger.log(Level.DEBUG, String.format("OGG Packet - page %d, id = %x - %s %s %s - %d:%d - %d segs, %d bytes",
+                page,
+                id,
+                (data[5] & 0x1) != 0 ? "cont" : "new",
+                (data[5] & 0x2) != 0 ? "bos" : "",
+                (data[5] & 0x4) != 0 ? "eos" : "",
+                (int) (granPos >> 32),
+                (int) (granPos & 0xffff_ffffL),
+                numSegs,
+                headLen + bodyLen));
     }
 
     /** */
@@ -152,5 +153,3 @@ class OGGPage {
 
     byte[] data = new byte[MAX_HEADERLEN + MAX_BODYLEN];
 }
-
-/* */

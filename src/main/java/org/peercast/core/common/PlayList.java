@@ -12,18 +12,17 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-
 import org.xml.sax.SAXException;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import vavi.util.Debug;
+
+import static java.lang.System.getLogger;
 
 
 /**
@@ -36,20 +35,23 @@ enum PlayList {
 
     /** */
     T_NONE {
+        @Override
         void write(OutputStream out) {
             throw new UnsupportedOperationException();
         }
+
+        @Override
         void read(InputStream in) throws IOException {
             throw new UnsupportedOperationException();
         }
     },
     /** */
     SCPLS {
-        /** */
+        @Override
         void write(OutputStream out) {
             PrintStream ps = new PrintStream(out);
             ps.println("[playlist]");
-            ps.println("");
+            ps.println();
             ps.printf("NumberOfEntries=%d\n", numURLs);
 
             for (int i = 0; i < numURLs; i++) {
@@ -60,7 +62,7 @@ enum PlayList {
             ps.println("Version=2");
         }
 
-        /** */
+        @Override
         void read(InputStream in) throws IOException {
             String tmp;
             BufferedReader reader = new BufferedReader(new InputStreamReader(in));
@@ -76,16 +78,16 @@ enum PlayList {
     },
     /** */
     PLS {
-        /** */
+        @Override
         void write(OutputStream out) {
             PrintStream ps = new PrintStream(out);
             for (int i = 0; i < numURLs; i++) {
                 ps.printf("%s\n", urls[i]);
-Debug.println("player's url: " + urls[i]);
+                logger.log(Level.TRACE, "player's url: " + urls[i]);
             }
         }
 
-        /** */
+        @Override
         void read(InputStream in) throws IOException {
             String tmp;
             BufferedReader reader = new BufferedReader(new InputStreamReader(in));
@@ -98,7 +100,7 @@ Debug.println("player's url: " + urls[i]);
     },
     /** */
     ASX {
-        /** */
+        @Override
         void write(OutputStream out) {
             PrintStream ps = new PrintStream(out);
             ps.println("<ASX Version=\"3.0\">");
@@ -110,15 +112,15 @@ Debug.println("player's url: " + urls[i]);
             ps.println("</ASX>");
         }
 
-        /** */
+        @Override
         void read(InputStream in) throws IOException {
-            log.debug("Reading ASX");
+            logger.log(Level.DEBUG, "Reading ASX");
 
             Document xml;
             try {
                 xml = Peercast.db.parse(in);
             } catch (SAXException e) {
-                throw (RuntimeException) new IllegalStateException().initCause(e);
+                throw (RuntimeException) new IllegalStateException(e);
             } // TODO: eof is NOT handled properly in sockets - always get error at end
 
             NodeList nodeList = xml.getChildNodes();
@@ -130,9 +132,9 @@ Debug.println("player's url: " + urls[i]);
                         node = nodeList.item(j);
                         if ("ref".equalsIgnoreCase(node.getNodeName())) {
                             String hr = ((Element) node).getAttribute("href");
-                            if (hr != null) {
+                            if (hr.isEmpty()) {
                                 addURL(hr, "");
-                                // log.debug("asx url %s",hr);
+//logger.log(Level.DEBUG, "asx url %s".formatted(hr));
                             }
                         }
                     }
@@ -141,22 +143,25 @@ Debug.println("player's url: " + urls[i]);
         }
     },
     RAM {
-        /** */
+        @Override
         void write(OutputStream out) {
             PrintStream ps = new PrintStream(out);
             for (int i = 0; i < numURLs; i++) {
                 ps.printf("%s", urls[i]);
             }
         }
+
+        @Override
         void read(InputStream in) throws IOException {
             throw new UnsupportedOperationException();
         }
     };
 
-    static Log log = LogFactory.getLog(PlayList.class);
+    private static final Logger logger = getLogger(PlayList.class.getName());
 
     /** */
     abstract void write(OutputStream out);
+
     /** keep pls regardless of errors (eof isn`t handled properly in sockets) */
     abstract void read(InputStream in) throws IOException;
 
@@ -167,7 +172,7 @@ Debug.println("player's url: " + urls[i]);
         titles = new String[max];
     }
 
-    void addURL(final String url, final String tit) {
+    void addURL(String url, String tit) {
         if (numURLs < maxURLs) {
             urls[numURLs] = url;
             titles[numURLs] = tit;
@@ -176,7 +181,7 @@ Debug.println("player's url: " + urls[i]);
     }
 
     /** */
-    void addChannel(final String path, ChannelInfo info) {
+    void addChannel(String path, ChannelInfo info) {
 
         String idStr = info.id.toString();
         String nid = info.id.isSet() ? idStr : info.name;
@@ -189,5 +194,3 @@ Debug.println("player's url: " + urls[i]);
 
     String[] urls, titles;
 }
-
-/* */

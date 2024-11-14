@@ -17,42 +17,42 @@ package org.peercast.core.common;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.util.Map;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.peercast.core.common.ChannelInfo.ContentType;
-
 import vavi.net.http.HttpContext;
 import vavi.net.http.HttpProtocol;
 import vavi.net.http.HttpUtil;
 import vavi.util.Singleton;
 
+import static java.lang.System.getLogger;
+
 
 /**
  * URLSource.
  *
- * @version 20-feb-2004
  * @author giles
+ * @version 20-feb-2004
  */
 class URLSource extends ChannelSource {
 
-    /** */
-    static Log log = LogFactory.getLog(URLSource.class);
+    private static final Logger logger = getLogger(URLSource.class.getName());
 
-    private ChannelManager channelManager = Singleton.getInstance(ChannelManager.class);
+    private final ChannelManager channelManager = Peercast.channelManager;
 
     /** */
-    URLSource(final String url) {
+    URLSource(String url) {
         baseurl = url;
     }
 
-    /** */
+    @Override
     void stream(Channel ch) {
 
         String url = null;
         while (!ch.streaming.isCancelled() && !Peercast.getInstance().isQuitting) {
-            if (url == null || url.length() == 0) {
+            if (url == null || url.isEmpty()) {
                 url = baseurl;
             }
 
@@ -61,7 +61,7 @@ class URLSource extends ChannelSource {
 
     }
 
-    /** */
+    @Override
     int getSourceRate() {
         if (inputStream != null) {
             return Peercast.getInstance().bytesInPerSec;
@@ -86,7 +86,7 @@ class URLSource extends ChannelSource {
         PlayList playList = null;
         ChannelStream source = null;
 
-log.debug(String.format("Fetch URL=%s", fileName));
+        logger.log(Level.DEBUG, String.format("Fetch URL=%s", fileName));
 
         try {
 
@@ -115,34 +115,34 @@ log.debug(String.format("Fetch URL=%s", fileName));
             channel.setStatus(Channel.Status.CONNECTING);
 
             if (channel.info.srcProtocol.equals(ChannelInfo.Protocol.HTTP) ||
-                channel.info.srcProtocol.equals(ChannelInfo.Protocol.PCP)  ||
-                channel.info.srcProtocol.equals(ChannelInfo.Protocol.MMS)) {
+                    channel.info.srcProtocol.equals(ChannelInfo.Protocol.PCP) ||
+                    channel.info.srcProtocol.equals(ChannelInfo.Protocol.MMS)) {
 
                 if (channel.info.contentType.equals(ChannelInfo.ContentType.WMA) ||
-                    channel.info.contentType.equals(ChannelInfo.ContentType.WMV)) {
+                        channel.info.contentType.equals(ChannelInfo.ContentType.WMV)) {
                     channel.info.srcProtocol = ChannelInfo.Protocol.MMS;
                 }
 
-log.debug("Channel source is HTTP");
+                logger.log(Level.DEBUG, "Channel source is HTTP");
 
                 String dir = null;
                 int p = fileName.indexOf("/");
                 if (p > 0) {
                     dir = fileName.substring(0, p - 1);
-                    fileName = fileName.substring(p, fileName.length());
+                    fileName = fileName.substring(p);
                 }
 
-log.debug(String.format("Fetch Host=%s", fileName));
-if (dir != null) {
- log.debug(String.format("Fetch Dir=%s", dir));
-}
+                logger.log(Level.DEBUG, String.format("Fetch Host=%s", fileName));
+                if (dir != null) {
+                    logger.log(Level.DEBUG, String.format("Fetch Dir=%s", dir));
+                }
 
                 HttpContext request = new HttpContext();
 
                 request.setMethod("GET");
                 request.setRemoteHost(fileName);
                 request.setRemotePort(80);
-                request.setRequestURI(dir != null ? String.valueOf(dir) : "");
+                request.setRequestURI(dir != null ? dir : "");
                 request.setProtocol(new HttpProtocol());
                 request.setHeader(Peercast.HTTP_HS_HOST, fileName);
                 request.setHeader(Peercast.HTTP_HS_CONNECTION, "close");
@@ -163,7 +163,7 @@ if (dir != null) {
                 }
 
                 HttpContext response = HttpUtil.postRequest(request);
-log.debug(String.format("Fetch HTTP: %d", response.getStatus()));
+                logger.log(Level.DEBUG, String.format("Fetch HTTP: %d", response.getStatus()));
 
 //                String name = channel.info.name;
 
@@ -172,48 +172,48 @@ log.debug(String.format("Fetch HTTP: %d", response.getStatus()));
                     ChannelInfo tmpInfo = channel.info;
                     Servent.readICYHeader(response, channel.info, null);
 
-                    if (tmpInfo.name.length() != 0) {
+                    if (!tmpInfo.name.isEmpty()) {
                         channel.info.name = tmpInfo.name;
                     }
-                    if (tmpInfo.genre.length() != 0) {
+                    if (!tmpInfo.genre.isEmpty()) {
                         channel.info.genre = tmpInfo.genre;
                     }
-                    if (tmpInfo.url.length() != 0) {
+                    if (!tmpInfo.url.isEmpty()) {
                         channel.info.url = tmpInfo.url;
                     }
 
-                    if (header.getKey().equals("icy-metaint")) {
-                        channel.icyMetaInterval = Integer.parseInt(header.getValue());
-                    } else if (header.getKey().equals("location")) {
-                        nextURL = header.getValue();
-                    } else if (header.getKey().equals("content-type")) {
-                        if (header.getValue().indexOf(Peercast.MIME_XSCPLS) > 0) {
-                            playList = PlayList.SCPLS;
-                        } else if (header.getValue().indexOf(Peercast.MIME_PLS) > 0) {
-                            playList = PlayList.PLS;
-                        } else if (header.getValue().indexOf(Peercast.MIME_XPLS) > 0) {
-                            playList = PlayList.PLS;
-                        } else if (header.getValue().indexOf(Peercast.MIME_M3U) > 0) {
-                            playList = PlayList.PLS;
-                        } else if (header.getValue().indexOf(Peercast.MIME_TEXT) > 0) {
-                            playList = PlayList.PLS;
-                        } else if (header.getValue().indexOf(Peercast.MIME_ASX) > 0) {
-                            playList = PlayList.ASX;
-                        } else if (header.getValue().indexOf(Peercast.MIME_MMS) > 0) {
-                            channel.info.srcProtocol = ChannelInfo.Protocol.MMS;
+                    switch (header.getKey()) {
+                        case "icy-metaint" -> channel.icyMetaInterval = Integer.parseInt(header.getValue());
+                        case "location" -> nextURL = header.getValue();
+                        case "content-type" -> {
+                            if (header.getValue().indexOf(Peercast.MIME_XSCPLS) > 0) {
+                                playList = PlayList.SCPLS;
+                            } else if (header.getValue().indexOf(Peercast.MIME_PLS) > 0) {
+                                playList = PlayList.PLS;
+                            } else if (header.getValue().indexOf(Peercast.MIME_XPLS) > 0) {
+                                playList = PlayList.PLS;
+                            } else if (header.getValue().indexOf(Peercast.MIME_M3U) > 0) {
+                                playList = PlayList.PLS;
+                            } else if (header.getValue().indexOf(Peercast.MIME_TEXT) > 0) {
+                                playList = PlayList.PLS;
+                            } else if (header.getValue().indexOf(Peercast.MIME_ASX) > 0) {
+                                playList = PlayList.ASX;
+                            } else if (header.getValue().indexOf(Peercast.MIME_MMS) > 0) {
+                                channel.info.srcProtocol = ChannelInfo.Protocol.MMS;
+                            }
+                            playList.init(1000);
                         }
-                        playList.init(1000);
                     }
 
                 }
 
-                if (nextURL.length() != 0 && response.getStatus() == 302) {
-                    log.debug(String.format("Ch.%d redirect: %s", channel.index, nextURL));
+                if (!nextURL.isEmpty() && response.getStatus() == 302) {
+                    logger.log(Level.DEBUG, String.format("Ch.%d redirect: %s", channel.index, nextURL));
                     return nextURL;
                 }
 
                 if (response.getStatus() != 200) {
-                    log.error("HTTP response: " + response.getStatus());
+                    logger.log(Level.ERROR, "HTTP response: " + response.getStatus());
                     throw new IOException("Bad HTTP connect");
                 }
 
@@ -221,7 +221,7 @@ log.debug(String.format("Fetch HTTP: %d", response.getStatus()));
 
             } else if (channel.info.srcProtocol.equals(ChannelInfo.Protocol.FILE)) {
 
-                log.debug("Channel source is FILE");
+                logger.log(Level.DEBUG, "Channel source is FILE");
 
                 inputStream = new FileInputStream(fileName);
 
@@ -256,7 +256,7 @@ log.debug(String.format("Fetch HTTP: %d", response.getStatus()));
 
             if (playList != null) {
 
-                log.debug(String.format("Ch.%d is Playlist", channel.index));
+                logger.log(Level.DEBUG, String.format("Ch.%d is Playlist", channel.index));
 
                 playList.read(inputStream);
 
@@ -265,9 +265,9 @@ log.debug(String.format("Fetch HTTP: %d", response.getStatus()));
 
                 int urlNum = 0;
 
-                log.debug(String.format("Playlist: %d URLs", playList.numURLs));
+                logger.log(Level.DEBUG, String.format("Playlist: %d URLs", playList.numURLs));
                 while (!channel.streaming.isCancelled() && playList.numURLs != 0 && !Peercast.getInstance().isQuitting) {
-                    if (url.length() == 0) {
+                    if (url.isEmpty()) {
                         url = playList.urls[urlNum % playList.numURLs];
                         urlNum++;
                     }
@@ -298,10 +298,13 @@ log.debug(String.format("Fetch HTTP: %d", response.getStatus()));
             }
 
         } catch (IOException e) {
-e.printStackTrace();
+            logger.log(Level.ERROR, e.getMessage(), e);
             channel.setStatus(Channel.Status.ERROR);
-            log.error(String.format("Ch.%d error: %s", channel.index, e.getMessage()));
-            try { Thread.sleep(1000); } catch (InterruptedException ie) {}
+            logger.log(Level.ERROR, String.format("Ch.%d error: %s", channel.index, e.getMessage()));
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException ie) {
+            }
         }
 
 
@@ -319,5 +322,3 @@ e.printStackTrace();
     /** */
     String baseurl;
 }
-
-/* */

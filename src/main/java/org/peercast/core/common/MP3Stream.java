@@ -21,21 +21,22 @@ import java.io.InputStream;
 /**
  * MP3Stream.
  *
- * @version 28-may-2003
  * @author giles
+ * @version 28-may-2003
  */
 class MP3Stream extends ChannelStream {
-    /** */
+
+    @Override
     int readEnd(InputStream is, Channel channel) throws IOException {
         return 0;
     }
 
-    /** */
+    @Override
     int readHeader(InputStream is, Channel channel) throws IOException {
         return 0;
     }
 
-    /** */
+    @Override
     int readPacket(InputStream is, Channel channel) throws IOException {
         ChannelPacket pack = null;
 
@@ -81,5 +82,3 @@ class MP3Stream extends ChannelStream {
         return 0;
     }
 }
-
-/* */

@@ -125,7 +125,7 @@ class ChannelPacketBuffer {
 
     /** */
     int getStreamPos(int index) {
-        if (packets.size() == 0) {
+        if (packets.isEmpty()) {
             return 0; // TODO check
         } else {
             return packets.get(index).pos;
@@ -217,7 +217,7 @@ class ChannelPacketBuffer {
     }
 
     /** */
-    private List<ChannelPacket> packets = new ArrayList<>();
+    private final List<ChannelPacket> packets = new ArrayList<>();
 
     /** */
     private volatile int lastPos, firstPos, safePos;
@@ -226,7 +226,7 @@ class ChannelPacketBuffer {
     private volatile int readPos;
 
     /** */
-    volatile int  writePos;
+    volatile int writePos;
 
     /** */
     int accept;
@@ -234,5 +234,3 @@ class ChannelPacketBuffer {
     /** */
     long lastWriteTime;
 }
-
-/* */

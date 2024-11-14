@@ -7,14 +7,14 @@
 package org.peercast.core.common;
 
 import java.io.IOException;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 
 import org.w3c.dom.Element;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import vavi.util.Debug;
 import vavi.util.Singleton;
+
+import static java.lang.System.getLogger;
 
 
 /**
@@ -25,80 +25,89 @@ import vavi.util.Singleton;
  */
 class ChannelInfo {
 
-    /** */
-    private static final Log log = LogFactory.getLog(ChannelInfo.class);
+    private static final Logger logger = getLogger(ChannelInfo.class.getName());
 
     /** */
-    private final ChannelManager channelManager = Singleton.getInstance(ChannelManager.class);
+    private final ChannelManager channelManager = Peercast.channelManager;
 
     /** */
     enum ContentType {
         /** */
-        UNKNOWN(""){
+        UNKNOWN("") {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
-                log.debug(String.format("Ch.%d is Raw", channel.index));
+                logger.log(Level.DEBUG, String.format("Ch.%d is Raw", channel.index));
                 return new RawStream();
             }
         },
 
         /** */
         RAW("") {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
-                log.debug(String.format("Ch.%d is Raw", channel.index));
+                logger.log(Level.DEBUG, String.format("Ch.%d is Raw", channel.index));
                 return new RawStream();
             }
         },
         /** */
         MP3(".mp3") {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
-                log.debug(String.format("Ch.%d is MP3 - meta: %d", channel.index, channel.icyMetaInterval));
+                logger.log(Level.DEBUG, String.format("Ch.%d is MP3 - meta: %d", channel.index, channel.icyMetaInterval));
                 return new MP3Stream();
             }
         },
         /** */
         OGG(".ogg") {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
-                log.debug(String.format("Ch.%d is OGG", channel.index));
+                logger.log(Level.DEBUG, String.format("Ch.%d is OGG", channel.index));
                 return new OGGStream();
             }
         },
         /** */
         OGM(".ogg") {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
-                log.debug(String.format("Ch.%d is OGG", channel.index));
+                logger.log(Level.DEBUG, String.format("Ch.%d is OGG", channel.index));
                 return new OGGStream();
             }
         },
         /** */
         MOV(".mov") {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
-                log.debug(String.format("Ch.%d is Raw", channel.index));
+                logger.log(Level.DEBUG, String.format("Ch.%d is Raw", channel.index));
                 return new RawStream();
             }
         },
         /** */
         MPG("") {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
-                log.debug(String.format("Ch.%d is Raw", channel.index));
+                logger.log(Level.DEBUG, String.format("Ch.%d is Raw", channel.index));
                 return new RawStream();
             }
         },
         /** */
         NSV(".nsv") {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
-                log.debug(String.format("Ch.%d is NSV", channel.index));
+                logger.log(Level.DEBUG, String.format("Ch.%d is NSV", channel.index));
                 return new NSVStream();
             }
         },
 
         /** */
         WMA(".wma") {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
                 throw new IllegalArgumentException(String.format("Ch.%d is WMA/WMV - but not MMS", channel.index));
             }
         },
         /** */
         WMV(".wmv") {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
                 throw new IllegalArgumentException(String.format("Ch.%d is WMA/WMV - but not MMS", channel.index));
             }
@@ -106,71 +115,84 @@ class ChannelInfo {
 
         /** */
         PLS("") {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
-                log.debug(String.format("Ch.%d is Raw", channel.index));
+                logger.log(Level.DEBUG, String.format("Ch.%d is Raw", channel.index));
                 return new RawStream();
             }
         },
         /** */
         ASX("") {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
-                log.debug(String.format("Ch.%d is Raw", channel.index));
+                logger.log(Level.DEBUG, String.format("Ch.%d is Raw", channel.index));
                 return new RawStream();
             }
         };
+
         ContentType(String extention) {
             this.extention = extention;
         }
-        String extention;
+
+        final String extention;
+
         /** */
         String getExtention() {
             return extention;
         }
-        /** @throws IllegalArgumentException */
+
+        /** @throws IllegalArgumentException  */
         abstract ChannelStream getChannelStream(Channel channel);
     }
 
     enum Protocol {
         /** */
         UNKNOWN {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
                 return channel.info.contentType.getChannelStream(channel);
             }
         },
         /** */
         PEERCAST {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
-                log.debug(String.format("Ch.%d is Peercast", channel.index));
+                logger.log(Level.DEBUG, String.format("Ch.%d is Peercast", channel.index));
                 return new PeercastStream();
             }
         },
         /** */
         HTTP {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
                 return channel.info.contentType.getChannelStream(channel);
             }
         },
         /** */
         FILE {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
                 return channel.info.contentType.getChannelStream(channel);
             }
         },
         /** */
         MMS {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
-                log.debug(String.format("Ch.%d is MMS", channel.index));
+                logger.log(Level.DEBUG, String.format("Ch.%d is MMS", channel.index));
                 return new MMSStream();
             }
         },
         /** */
         PCP {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
-                log.debug(String.format("Ch.%d is PCP", channel.index));
+                logger.log(Level.DEBUG, String.format("Ch.%d is PCP", channel.index));
                 return new PCPStream(channel.remoteID);
             }
         };
-        /** @throws IllegalArgumentException */
+
+        /** @throws IllegalArgumentException  */
         abstract ChannelStream getChannelStream(Channel channel);
     }
 
@@ -198,7 +220,7 @@ class ChannelInfo {
             }
         }
 
-        if (info.name != null && info.name.length() != 0) {
+        if (info.name != null && !info.name.isEmpty()) {
             if (name.contains(info.name)) {
                 return true;
             }
@@ -238,14 +260,14 @@ class ChannelInfo {
             matchAny = false;
         }
 
-        if (info.name.length() != 0) {
+        if (!info.name.isEmpty()) {
             if (name.contains(info.name)) {
                 return true;
             }
             matchAny = false;
         }
 
-        if (info.genre.length() != 0) {
+        if (!info.genre.isEmpty()) {
             if (genre.contains(info.genre)) {
                 return true;
             }
@@ -265,14 +287,14 @@ class ChannelInfo {
         }
 
         // only update from chaninfo that has full name etc..
-        if (info.name == null || info.name.length() == 0) {
+        if (info.name == null || info.name.isEmpty()) {
             return false;
         }
 
         // check valid broadcaster key
         if (bcID.isSet()) {
             if (!bcID.equals(info.bcID)) {
-                log.error("ChanInfo BC key not valid");
+                logger.log(Level.ERROR, "ChanInfo BC key not valid");
                 return false;
             }
         }
@@ -319,13 +341,13 @@ class ChannelInfo {
     /**
      * @param idString "23450ABCDEF1..." 32 �����܂ł�����͂��Ȃ��A���̌�؂�̂�
      */
-    void initNameID(final String idString) {
+    void initNameID(String idString) {
         init();
         id = new GnuID(idString);
         if (!id.isSet()) {
             name = idString;
         }
-Debug.println("id: " + id + ", " + name);
+        logger.log(Level.TRACE, "id: " + id + ", " + name);
     }
 
     /** */
@@ -516,12 +538,12 @@ Debug.println("id: " + id + ", " + name);
         }
 
         typeStr = readXMLString(n, "type");
-        if (typeStr.length() != 0) {
+        if (!typeStr.isEmpty()) {
             contentType = ContentType.valueOf(typeStr);
         }
 
         idStr = readXMLString(n, "id");
-        if (idStr.length() != 0) {
+        if (!idStr.isEmpty()) {
             id = new GnuID(idStr);
         }
 
@@ -534,7 +556,7 @@ Debug.println("id: " + id + ", " + name);
     }
 
     /** */
-    void init(final String n, GnuID cid, ContentType tp, int br) {
+    void init(String n, GnuID cid, ContentType tp, int br) {
         init();
 
         name = n;
@@ -544,7 +566,7 @@ Debug.println("id: " + id + ", " + name);
     }
 
     /** */
-    void init(final String fn) {
+    void init(String fn) {
         init();
 
         if (fn != null) {
@@ -553,7 +575,7 @@ Debug.println("id: " + id + ", " + name);
     }
 
     /** */
-    private static String readXMLString(Element n, final String arg) {
+    private static String readXMLString(Element n, String arg) {
         return n.getAttribute(arg);
     }
 
@@ -584,5 +606,3 @@ Debug.println("id: " + id + ", " + name);
 
     String desc, genre, url, comment;
 }
-
-/* */

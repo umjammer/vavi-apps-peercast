@@ -17,12 +17,13 @@ import java.io.InputStream;
  * @version 0.00 2005/08/11 nsano initial version <br>
  */
 class RawStream extends ChannelStream {
-    /** */
+
+    @Override
     int readHeader(InputStream is, Channel channel) throws IOException {
         return 0;
     }
 
-    /** */
+    @Override
     int readPacket(InputStream is, Channel channel) throws IOException {
         ChannelPacket pack = null;
 
@@ -38,10 +39,8 @@ class RawStream extends ChannelStream {
         return l;
     }
 
-    /** */
+    @Override
     int readEnd(InputStream is, Channel channel) throws IOException {
         return 0;
     }
 }
-
-/* */

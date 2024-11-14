@@ -18,18 +18,20 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import static java.lang.System.getLogger;
 
 
 /**
  * OggSubStream.
  *
- * @version 28-may-2003
  * @author giles
+ * @version 28-may-2003
  */
 abstract class OggSubStream {
+
     OggSubStream() {
         maxHeaders = 0;
         serialNo = 0;
@@ -100,13 +102,13 @@ abstract class OggSubStream {
  */
 class OggVorbisSubStream extends OggSubStream {
 
-    private Log log = LogFactory.getLog(OggVorbisSubStream.class);
+    private static final Logger logger = getLogger(OggVorbisSubStream.class.getName());
 
     OggVorbisSubStream() {
         samplerate = 0;
     }
 
-    /** */
+    @Override
     void procHeaders(Channel ch) throws IOException {
         int packPtr = 0;
 
@@ -122,24 +124,24 @@ class OggVorbisSubStream extends OggSubStream {
             id[7] = 0;
 
             switch (id[0]) {
-            case 1: // ident
-                log.debug(String.format("OGG Vorbis Header: Ident (%d bytes)", vin.available()));
-                readIdent(vin, ch.info);
+                case 1: // ident
+                    logger.log(Level.DEBUG, String.format("OGG Vorbis Header: Ident (%d bytes)", vin.available()));
+                    readIdent(vin, ch.info);
+                    break;
+                case 3: // comment
+                {
+                    logger.log(Level.DEBUG, String.format("OGG Vorbis Header: Comment (%d bytes)", vin.available()));
+                    ChannelInfo newInfo = ch.info;
+                    readComment(vin, newInfo);
+                    ch.updateInfo(newInfo);
+                }
                 break;
-            case 3: // comment
-            {
-                log.debug(String.format("OGG Vorbis Header: Comment (%d bytes)", vin.available()));
-                ChannelInfo newInfo = ch.info;
-                readComment(vin, newInfo);
-                ch.updateInfo(newInfo);
-            }
-                break;
-            case 5: // setup
-                log.debug(String.format("OGG Vorbis Header: Setup (%d bytes)", vin.available()));
-                // readSetup(vin);
-                break;
-            default:
-                throw new IOException("Unknown Vorbis packet header type");
+                case 5: // setup
+                    logger.log(Level.DEBUG, String.format("OGG Vorbis Header: Setup (%d bytes)", vin.available()));
+                    // readSetup(vin);
+                    break;
+                default:
+                    throw new IOException("Unknown Vorbis packet header type");
             }
         }
 
@@ -162,7 +164,7 @@ class OggVorbisSubStream extends OggSubStream {
 
         dis.readByte(); // skip blocksize 0+1
 
-        log.debug(String.format("OGG Vorbis Ident: ver=%d, chans=%d, rate=%d, brMax=%d, brNom=%d, brLow=%d", ver, chans, samplerate, brMax, brNom, brLow));
+        logger.log(Level.DEBUG, String.format("OGG Vorbis Ident: ver=%d, chans=%d, rate=%d, brMax=%d, brNom=%d, brLow=%d", ver, chans, samplerate, brMax, brNom, brLow));
 
         bitrate = brNom / 1000;
 
@@ -181,7 +183,7 @@ class OggVorbisSubStream extends OggSubStream {
             in.read();
         }
 
-        log.debug(String.format("Read %d bytes of Vorbis Setup", cnt));
+        logger.log(Level.DEBUG, String.format("Read %d bytes of Vorbis Setup", cnt));
     }
 
     /** */
@@ -203,7 +205,7 @@ class OggVorbisSubStream extends OggSubStream {
             }
             in.read(argBuf, 0, l);
             String arg = new String(argBuf, 0, l);
-            log.debug(String.format("OGG Comment: %s", argBuf));
+            logger.log(Level.DEBUG, String.format("OGG Comment: %s", argBuf));
 
             int p;
             if ((p = arg.indexOf("ARTIST=")) > 0) {
@@ -237,7 +239,8 @@ class OggVorbisSubStream extends OggSubStream {
  * OggTheoraSubStream.
  */
 class OggTheoraSubStream extends OggSubStream {
-    private Log log = LogFactory.getLog(OggTheoraSubStream.class);
+
+    private static final Logger logger = getLogger(OggTheoraSubStream.class.getName());
 
     OggTheoraSubStream() {
         granposShift = 0;
@@ -258,7 +261,7 @@ class OggTheoraSubStream extends OggSubStream {
         int verMaj = dis.read();
         int verMin = dis.read();
         int verSub = dis.read();
-log.debug(verMaj + ", " + verMin + ", " + verSub);
+        logger.log(Level.DEBUG, verMaj + ", " + verMin + ", " + verSub);
         int encWidth = dis.readShort() << 4;
         int encHeight = dis.readShort() << 4;
 
@@ -300,10 +303,10 @@ log.debug(verMaj + ", " + verMin + ", " + verSub);
 
         granposShift = dis.readByte() & 0x1f; // 5bits
 
-        log.debug(String.format("OGG Theora Info: %dx%dx%.1ffps %dkbps %dQ %dG", encWidth, encHeight, fps, bitrate, quality, granposShift));
+        logger.log(Level.DEBUG, String.format("OGG Theora Info: %dx%dx%.1ffps %dkbps %dQ %dG", encWidth, encHeight, fps, bitrate, quality, granposShift));
     }
 
-    /** */
+    @Override
     void procHeaders(Channel ch) throws IOException {
         int packPtr = 0;
 
@@ -319,13 +322,13 @@ log.debug(verMaj + ", " + verMin + ", " + verSub);
             id[7] = 0;
 
             switch (id[0] & 0xff) {
-            case 128: // info
-                log.debug(String.format("OGG Theora Header: Info (%d bytes)", vin.available()));
-                readInfo(vin, ch.info);
-                break;
-            default:
-                log.debug(String.format("OGG Theora Header: Unknown %d (%d bytes)", id[0] & 0xff, vin.available()));
-                break;
+                case 128: // info
+                    logger.log(Level.DEBUG, String.format("OGG Theora Header: Info (%d bytes)", vin.available()));
+                    readInfo(vin, ch.info);
+                    break;
+                default:
+                    logger.log(Level.DEBUG, String.format("OGG Theora Header: Unknown %d (%d bytes)", id[0] & 0xff, vin.available()));
+                    break;
             }
 
         }
@@ -341,25 +344,25 @@ log.debug(verMaj + ", " + verMin + ", " + verSub);
 /** */
 class OGGStream extends ChannelStream {
 
-    private Log log = LogFactory.getLog(OGGStream.class);
+    private static final Logger logger = getLogger(OGGStream.class.getName());
 
     OGGStream() {
     }
 
     static int test = 0;
 
-    /** */
+    @Override
     int readHeader(InputStream is, Channel channel) throws IOException {
         test = 0;
         return 0;
     }
 
-    /** */
+    @Override
     int readEnd(InputStream is, Channel channel) throws IOException {
         return 0;
     }
 
-    /** */
+    @Override
     int readPacket(InputStream is, Channel channel) throws IOException {
         OGGPage ogg = new OGGPage();
         ChannelPacket pack = null;
@@ -379,11 +382,11 @@ class OGGStream extends ChannelStream {
         if (ogg.isEOS()) {
 
             if (ogg.getSerialNo() == vorbis.serialNo) {
-                log.debug("Vorbis stream: EOS");
+                logger.log(Level.DEBUG, "Vorbis stream: EOS");
                 vorbis.eos();
             }
             if (ogg.getSerialNo() == theora.serialNo) {
-                log.debug("Theora stream: EOS");
+                logger.log(Level.DEBUG, "Theora stream: EOS");
                 theora.eos();
             }
         }
@@ -419,7 +422,7 @@ class OGGStream extends ChannelStream {
                 channel.streamPos += channel.headPack.data.length;
 
                 channel.newPacket(channel.headPack);
-                log.debug(String.format("Got %d bytes of headers", channel.headPack.data.length));
+                logger.log(Level.DEBUG, String.format("Got %d bytes of headers", channel.headPack.data.length));
             }
 
         } else {

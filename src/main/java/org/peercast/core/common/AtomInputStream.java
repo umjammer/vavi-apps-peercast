@@ -9,6 +9,7 @@ package org.peercast.core.common;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 
 import vavi.io.LittleEndianDataInputStream;
 
@@ -28,7 +29,7 @@ public class AtomInputStream {
         dataLength = 0;
     }
 
-    /** */
+//    /** */
 //    private void checkData(int d) throws IOException {
 //        if (dataLength != d) {
 //            throw new IOException("Bad atom data");
@@ -37,6 +38,7 @@ public class AtomInputStream {
 
     /**
      * below two fields will be orver written.
+     *
      * @see #childCount
      * @see #dataLength
      */
@@ -115,8 +117,8 @@ public class AtomInputStream {
         byte[] bytes = new byte[max];
 //        checkData(length);
         readBytes(bytes, max, length);
-//System.err.print("\n" + StringUtil.getDump(bytes));
-        return new String(bytes, 0, length - 1, "UTF-8");
+//logger.log(Level.DEBUG, "\n" + StringUtil.getDump(bytes));
+        return new String(bytes, 0, length - 1, StandardCharsets.UTF_8);
     }
 
     /** */
@@ -152,7 +154,5 @@ public class AtomInputStream {
 
     int childCount, dataLength;
 
-    private LittleEndianDataInputStream dis;
+    private final LittleEndianDataInputStream dis;
 }
-
-/* */

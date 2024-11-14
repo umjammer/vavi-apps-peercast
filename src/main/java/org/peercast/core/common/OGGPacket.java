@@ -51,5 +51,3 @@ class OGGPacket {
 
     int[] packetSizes = new int[MAX_PACKETS];
 }
-
-/* */

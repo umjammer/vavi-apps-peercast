@@ -25,17 +25,18 @@ import java.io.InputStream;
  * @version 28-may-2003
  */
 class NSVStream extends ChannelStream {
-    /** */
+
+    @Override
     int readEnd(InputStream is, Channel channel) throws IOException {
         return 0;
     }
 
-    /** */
+    @Override
     int readHeader(InputStream is, Channel channel) throws IOException {
         return 0;
     }
 
-    /** */
+    @Override
     int readPacket(InputStream is, Channel channel) throws IOException {
         ChannelPacket pack = null;
 
@@ -81,5 +82,3 @@ class NSVStream extends ChannelStream {
         return 0;
     }
 }
-
-/* */

@@ -14,6 +14,7 @@ package org.peercast.core.common;
  * @version 0.00 050811 nsano initial version <br>
  */
 class MP3Header {
+
     int lay;
     int version;
     int error_protection;
@@ -29,5 +30,3 @@ class MP3Header {
     int stereo;
 }
 
-
-/* */

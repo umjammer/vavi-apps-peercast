@@ -31,5 +31,3 @@ class ASFInfo {
 
     ASFStream[] streams = new ASFStream[MAX_STREAMS];
 }
-
-/* */

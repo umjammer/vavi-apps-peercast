@@ -49,7 +49,7 @@ class GnuID {
     }
 
     public boolean equals(Object gid) {
-        return Arrays.equals(id, GnuID.class.cast(gid).id);
+        return Arrays.equals(id, ((GnuID) gid).id);
     }
 
     boolean isSet() {
@@ -72,7 +72,7 @@ class GnuID {
         random.nextBytes(id);
     }
 
-    void encode(final InetSocketAddress address, final String salt1, final String salt2, byte salt3) {
+    void encode(InetSocketAddress address, String salt1, String salt2, byte salt3) {
         int s1 = 0, s2 = 0;
         for (int i = 0; i < 16; i++) {
             byte ipBytes = id[i];
@@ -85,7 +85,7 @@ class GnuID {
             // add a bit of salt
             if (salt1 != null) {
                 if (s1 < salt1.length()) {
-                    ipBytes ^= salt1.charAt(s1++);
+                    ipBytes = (byte) (ipBytes ^ salt1.charAt(s1++));
                 } else {
                     s1 = 0;
                 }
@@ -94,7 +94,7 @@ class GnuID {
             // and some more
             if (salt2 != null) {
                 if (s2 < salt2.length()) {
-                    ipBytes ^= salt2.charAt(s2++);
+                    ipBytes = (byte) (ipBytes ^ salt2.charAt(s2++));
                 } else {
                     s2 = 0;
                 }
@@ -107,7 +107,7 @@ class GnuID {
         }
     }
 
-    /**  */
+    /** */
     public String toString() {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < 16; i++) {
@@ -130,5 +130,3 @@ class GnuID {
 
     int storeTime;
 }
-
-/* */

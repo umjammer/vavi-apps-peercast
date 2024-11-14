@@ -10,7 +10,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 import org.w3c.dom.Document;
-
 import vavi.xml.util.PrettyPrinter;
 
 
@@ -58,5 +57,3 @@ class ChannelMeta {
 
     byte[] data = new byte[MAX_DATALEN];
 }
-
-/* */

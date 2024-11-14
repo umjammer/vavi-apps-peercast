@@ -44,13 +44,11 @@ class ASFStream {
 
 
     final String getTypeName() {
-        switch (type) {
-        case T_VIDEO:
-            return "Video";
-        case T_AUDIO:
-            return "Audio";
-        }
-        return "Unknown";
+        return switch (type) {
+            case T_VIDEO -> "Video";
+            case T_AUDIO -> "Audio";
+            default -> "Unknown";
+        };
     }
 
     void reset() {
@@ -63,5 +61,3 @@ class ASFStream {
     int bitrate;
     TYPE type;
 }
-
-/* */

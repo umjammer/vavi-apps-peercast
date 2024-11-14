@@ -15,22 +15,28 @@
 package org.peercast.core.common;
 
 import java.io.IOException;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
+import static java.lang.System.getLogger;
 
 
 /**
  * ICYSource.
  *
- * @version 20-feb-2004
  * @author giles
+ * @version 20-feb-2004
  */
 class ICYSource extends ChannelSource {
-    static Log log = LogFactory.getLog(ICYSource.class);
 
+    private static final Logger logger = getLogger(ICYSource.class.getName());
+
+    @Override
     void stream(Channel ch) throws IOException {
-        ChannelStream source = null;
+        ChannelStream source;
         try {
 
             if (ch.sock != null) {
@@ -44,7 +50,7 @@ class ICYSource extends ChannelSource {
             ch.readStream(ch.sock.getInputStream(), source);
 
         } catch (IOException e) {
-            log.error(String.format("Ch.%d aborted: %s", ch.index, e.getMessage()));
+            logger.log(Level.ERROR, String.format("Ch.%d aborted: %s", ch.index, e.getMessage()), e);
         }
 
 
@@ -56,5 +62,3 @@ class ICYSource extends ChannelSource {
         }
     }
 }
-
-/* */

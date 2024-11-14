@@ -10,15 +10,16 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import vavi.util.Debug;
 import vavi.util.Singleton;
+
+import static java.lang.System.getLogger;
 
 
 /**
@@ -27,12 +28,12 @@ import vavi.util.Singleton;
  * @author <a href="mailto:vavivavi@yahoo.co.jp">Naohide Sano</a> (nsano)
  * @version 0.00 050811 nsano initial version <br>
  */
-public class ChannelManager extends Singleton {
-    /** */
-    static Log log = LogFactory.getLog(ChannelManager.class);
+public class ChannelManager {
+
+    private static final Logger logger = getLogger(ChannelManager.class.getName());
 
     /** */
-    private ServentManager serventManager = Singleton.getInstance(ServentManager.class);
+    private final ServentManager serventManager = Peercast.serventManager;
 
     /** */
     static final int MAX_CHANNELS = 8;
@@ -59,7 +60,7 @@ public class ChannelManager extends Singleton {
 
     /** */
     void quit() {
-log.debug("ChanMgr is quitting..");
+        logger.log(Level.DEBUG, "ChanMgr is quitting..");
         for (Channel channel : channels) {
             if (!channel.streaming.isCancelled()) {
                 channel.streaming.cancel(true);
@@ -80,7 +81,7 @@ log.debug("ChanMgr is quitting..");
     }
 
     /**
-     * @param name case insesitive
+     * @param name case insensitive
      */
     Channel findChannelByName(String name) {
         for (Channel channel : channels) {
@@ -99,7 +100,7 @@ log.debug("ChanMgr is quitting..");
     }
 
     /** */
-    Channel findChannelByMount(final String mount) {
+    Channel findChannelByMount(String mount) {
         for (Channel channel : channels) {
             if (channel.isActive()) {
                 if (channel.mount.equals(mount)) {
@@ -164,7 +165,7 @@ log.debug("ChanMgr is quitting..");
 
     /** */
     Channel findAndRelay(ChannelInfo info) {
-log.debug(String.format("Searching for: %s (%s)", info.id.toString(), info.name));
+        logger.log(Level.DEBUG, String.format("Searching for: %s (%s)", info.id.toString(), info.name));
         Peercast.getInstance().notifyMessage(ServentManager.NotifyType.PEERCAST, "Finding channel... : " + info.id);
 
         Channel channel = findChannelByNameID(info);
@@ -192,7 +193,7 @@ log.debug(String.format("Searching for: %s (%s)", info.id.toString(), info.name)
 
             try {
                 Thread.sleep(100);
-            } catch (InterruptedException e) {
+            } catch (InterruptedException ignored) {
             }
         }
 
@@ -200,23 +201,18 @@ log.debug(String.format("Searching for: %s (%s)", info.id.toString(), info.name)
     }
 
     /** */
-    boolean writeVariable(OutputStream out, final String var, int index) {
+    boolean writeVariable(OutputStream out, String var, int index) {
         String buf;
-        if (var == "numHitLists") {
-            buf = String.format("%d", numHitLists());
-
-        } else if (var == "numChannels") {
-            buf = String.format("%d", numChannels());
-        } else if (var == "djMessage") {
-            buf = broadcastMessage;
-        } else if (var == "icyMetaInterval") {
-            buf = String.format("%d", icyMetaInterval);
-        } else if (var == "maxRelaysPerChannel") {
-            buf = String.format("%d", maxRelaysPerChannel);
-        } else if (var == "hostUpdateInterval") {
-            buf = String.format("%d", hostUpdateInterval);
-        } else {
-            return false;
+        switch (var) {
+            case "numHitLists" -> buf = String.format("%d", numHitLists());
+            case "numChannels" -> buf = String.format("%d", numChannels());
+            case "djMessage" -> buf = broadcastMessage;
+            case "icyMetaInterval" -> buf = String.format("%d", icyMetaInterval);
+            case "maxRelaysPerChannel" -> buf = String.format("%d", maxRelaysPerChannel);
+            case "hostUpdateInterval" -> buf = String.format("%d", hostUpdateInterval);
+            default -> {
+                return false;
+            }
         }
 
         PrintStream ps = new PrintStream(out);
@@ -253,7 +249,7 @@ log.debug(String.format("Searching for: %s (%s)", info.id.toString(), info.name)
 
             InetSocketAddress serverAdress = serventManager.serverHost;
             boolean push = serventManager.getFirewall() != ServentManager.FirewallState.OFF;
-            boolean busy = (serventManager.pubInFull() && serventManager.outFull()) || serventManager.relaysFull();
+            boolean busy = (serventManager.pubInFull() && ServentManager.outFull()) || serventManager.relaysFull();
             boolean stable = serventManager.totalStreams > 0;
 
             GnuPacket hit = null;
@@ -285,9 +281,9 @@ log.debug(String.format("Searching for: %s (%s)", info.id.toString(), info.name)
                             numOut++;
                         }
 
-                        log.debug(String.format("Sent ch.%d to %d servents, TTL %d", channel.index, numOut, ttl));
+                        logger.log(Level.DEBUG, String.format("Sent ch.%d to %d servents, TTL %d", channel.index, numOut, ttl));
                     } catch (Exception e) {
-                        System.err.println(e);
+                        logger.log(Level.ERROR, e.getMessage(), e);
                     }
                 }
             }
@@ -325,7 +321,7 @@ log.debug(String.format("Searching for: %s (%s)", info.id.toString(), info.name)
     }
 
     /** */
-    synchronized Channel createChannel(ChannelInfo info, final String mount) {
+    synchronized Channel createChannel(ChannelInfo info, String mount) {
 
         Channel newChannel = new Channel();
 
@@ -347,7 +343,7 @@ log.debug(String.format("Searching for: %s (%s)", info.id.toString(), info.name)
         newChannel.type = Channel.Type.ALLOCATED;
         newChannel.info.createdTime = System.currentTimeMillis();
 
-        log.debug(String.format("New channel (%d) created", newChannel.index));
+        logger.log(Level.DEBUG, String.format("New channel (%d) created", newChannel.index));
 
         channels.add(newChannel);
 
@@ -380,6 +376,7 @@ log.debug(String.format("Searching for: %s (%s)", info.id.toString(), info.name)
 
     /**
      * info ���� ChanHitList ��쐬�� channelHitLists �ɒǉB���
+     *
      * @return �ǉB��ꂽ ChanHitList
      */
     ChannelHitList addHitList(ChannelInfo info) {
@@ -387,7 +384,7 @@ log.debug(String.format("Searching for: %s (%s)", info.id.toString(), info.name)
 
         for (ChannelHitList hitList : channelHitLists) {
             if (!hitList.isUsed()) {
-log.debug(String.format("Created new hitlist: %s", info.id));
+                logger.log(Level.DEBUG, String.format("Created new hitlist: %s", info.id));
                 chl = hitList;
                 break;
             }
@@ -400,7 +397,7 @@ log.debug(String.format("Created new hitlist: %s", info.id));
             Peercast.getInstance().addChannel(chl.info);
         } else {
             chl = new ChannelHitList();
-log.debug(String.format("Created new hitlist: %s", info.id));
+            logger.log(Level.DEBUG, String.format("Created new hitlist: %s", info.id));
             chl.used = true;
             chl.info = info;
             chl.info.createdTime = System.currentTimeMillis();
@@ -426,7 +423,7 @@ log.debug(String.format("Created new hitlist: %s", info.id));
                 if (hitList.clearDeadHits(interval, clearTrackers) == 0) {
                     if (!isBroadcasting(hitList.info.id)) {
                         if (findChannelByID(hitList.info.id) == null) {
-                            log.debug("Deleting hitlist");
+                            logger.log(Level.DEBUG, "Deleting hitlist");
                             Peercast.getInstance().delChannel(hitList.info);
                             hitList.init();
                         }
@@ -488,7 +485,7 @@ log.debug(String.format("Created new hitlist: %s", info.id));
     /** */
     void addHit(InetSocketAddress address, GnuID id, boolean tracker) {
         ChannelHit hit = new ChannelHit();
-Debug.println("address: " + address);
+        logger.log(Level.TRACE, "address: " + address);
         hit.setAddress(address);
         hit.remoteAddresses[0] = address;
         hit.remoteAddresses[1] = null;
@@ -517,10 +514,12 @@ Debug.println("address: " + address);
 
     /** */
     class ChannelInfoFinder extends Thread {
+
         ChannelInfo info;
 
         boolean keep;
 
+        @Override
         public void run() {
             try {
                 Channel channel = findChannelByNameID(info);
@@ -542,7 +541,7 @@ Debug.println("address: " + address);
                     }
                 }
             } catch (Exception e) {
-                log.error("ChannelInfoFinder", e);
+                logger.log(Level.ERROR, "ChannelInfoFinder", e);
             }
         }
     }
@@ -556,7 +555,7 @@ Debug.println("address: " + address);
     }
 
     /** */
-    static final String player = "C:\\Program Files\\foobar2000\\foobar2000.exe";
+    static final String player = "/Applications/foobar2000.app/Contents/MacOS/foobar2000";
 
     /** */
     void playChannel(ChannelInfo info) throws IOException {
@@ -585,14 +584,14 @@ Debug.println("address: " + address);
         playList.init(1);
         playList.addChannel(string, info);
 
-log.debug(String.format("Writing %s", filename));
+        logger.log(Level.DEBUG, String.format("Writing %s", filename));
         FileOutputStream file;
         file = new FileOutputStream(filename);
         playList.write(file);
         file.close();
 
-log.debug(String.format("Executing: %s", filename));
-        pb.command(new String[] { player, filename });
+        logger.log(Level.DEBUG, String.format("Executing: %s", filename));
+        pb.command(player, filename);
         pb.start();
     }
 
@@ -678,5 +677,3 @@ log.debug(String.format("Executing: %s", filename));
 
     GnuID currFindAndPlayChannel;
 }
-
-/* */
