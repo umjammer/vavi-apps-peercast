@@ -19,13 +19,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.List;
 import java.util.Map;
 
 import org.peercast.core.common.ChannelInfo.ContentType;
-import vavi.net.http.HttpContext;
-import vavi.net.http.HttpProtocol;
-import vavi.net.http.HttpUtil;
-import vavi.util.Singleton;
 
 import static java.lang.System.getLogger;
 
@@ -91,9 +90,13 @@ class URLSource extends ChannelSource {
         try {
 
             // get the source protocol
-            if (fileName.toLowerCase().startsWith("http://")) {
+            if (fileName.toLowerCase().startsWith("http://") || fileName.toLowerCase().startsWith("https://")) {
                 channel.info.srcProtocol = ChannelInfo.Protocol.HTTP;
-                fileName = fileName.substring(7);
+                if (fileName.toLowerCase().startsWith("http://")) {
+                    fileName = fileName.substring(7);
+                } else {
+                    fileName = fileName.substring(8);
+                }
             } else if (fileName.toLowerCase().startsWith("mms://")) {
                 channel.info.srcProtocol = ChannelInfo.Protocol.MMS;
                 fileName = fileName.substring(6);
@@ -123,101 +126,95 @@ class URLSource extends ChannelSource {
                     channel.info.srcProtocol = ChannelInfo.Protocol.MMS;
                 }
 
-                logger.log(Level.DEBUG, "Channel source is HTTP");
+                logger.log(Level.DEBUG, "Channel source is " + channel.info.srcProtocol);
 
-                String dir = null;
-                int p = fileName.indexOf("/");
-                if (p > 0) {
-                    dir = fileName.substring(0, p - 1);
-                    fileName = fileName.substring(p);
+                // Reconstruct full URL for HttpURLConnection
+                String protocol = "http";
+                if (url.toLowerCase().startsWith("https://")) {
+                    protocol = "https";
                 }
+                String fullUrl = protocol + "://" + fileName;
+                
+                URL urlObj = new URL(fullUrl);
+                HttpURLConnection conn = (HttpURLConnection) urlObj.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(10000);
+                conn.setReadTimeout(10000);
 
-                logger.log(Level.DEBUG, String.format("Fetch Host=%s", fileName));
-                if (dir != null) {
-                    logger.log(Level.DEBUG, String.format("Fetch Dir=%s", dir));
-                }
-
-                HttpContext request = new HttpContext();
-
-                request.setMethod("GET");
-                request.setRemoteHost(fileName);
-                request.setRemotePort(80);
-                request.setRequestURI(dir != null ? dir : "");
-                request.setProtocol(new HttpProtocol());
-                request.setHeader(Peercast.HTTP_HS_HOST, fileName);
-                request.setHeader(Peercast.HTTP_HS_CONNECTION, "close");
-                request.setHeader(Peercast.HTTP_HS_ACCEPT, "*/*");
+                conn.setRequestProperty(Peercast.HTTP_HS_HOST, urlObj.getHost());
+                conn.setRequestProperty(Peercast.HTTP_HS_CONNECTION, "close");
+                conn.setRequestProperty(Peercast.HTTP_HS_ACCEPT, "*/*");
 
                 if (channel.info.srcProtocol.equals(ChannelInfo.Protocol.MMS)) {
-                    request.setHeader(Peercast.HTTP_HS_AGENT, "NSPlayer/4.1.0.3856");
-                    request.setHeader("Pragma", "no-cache,rate=1.000000,request-context=1");
-//                  request.setHeader("Pragma", "no-cache,rate=1.000000,stream-time=0,stream-offset=4294967295:4294967295,request-context=22605256,max-duration=0");
-                    request.setHeader("Pragma", "xPlayStrm=1");
-                    request.setHeader("Pragma", "xClientGUID={c77e7400-738a-11d2-9add-0020af0a3278}");
-                    request.setHeader("Pragma", "stream-switch-count=2");
-                    request.setHeader("Pragma", "stream-switch-entry=ffff:1:0 ffff:2:0");
+                    conn.setRequestProperty(Peercast.HTTP_HS_AGENT, "NSPlayer/4.1.0.3856");
+                    conn.setRequestProperty("Pragma", "no-cache,rate=1.000000,request-context=1");
+                    conn.setRequestProperty("Pragma", "xPlayStrm=1");
+                    conn.setRequestProperty("Pragma", "xClientGUID={c77e7400-738a-11d2-9add-0020af0a3278}");
+                    conn.setRequestProperty("Pragma", "stream-switch-count=2");
+                    conn.setRequestProperty("Pragma", "stream-switch-entry=ffff:1:0 ffff:2:0");
+                } else if (channel.info.srcProtocol.equals(ChannelInfo.Protocol.HTTP)) {
+                    conn.setRequestProperty(Peercast.HTTP_HS_AGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
+                    conn.setRequestProperty("Icy-MetaData", "1");
                 } else {
-                    request.setHeader(Peercast.HTTP_HS_AGENT, GnuPacket.PCX_AGENT);
-                    request.setHeader(GnuPacket.PCX_HS_PCP, "1");
-                    request.setHeader("Icy-MetaData", "1");        // fix by ravon
+                    conn.setRequestProperty(Peercast.HTTP_HS_AGENT, GnuPacket.PCX_AGENT);
+                    conn.setRequestProperty(GnuPacket.PCX_HS_PCP, "1");
+                    conn.setRequestProperty("Icy-MetaData", "1");
                 }
 
-                HttpContext response = HttpUtil.postRequest(request);
-                logger.log(Level.DEBUG, String.format("Fetch HTTP: %d", response.getStatus()));
+                int responseCode = conn.getResponseCode();
+                logger.log(Level.DEBUG, String.format("Fetch HTTP: %d", responseCode));
 
-//                String name = channel.info.name;
+                // Process headers
+                // Note: HttpURLConnection header keys can be null (for status line) or case-insensitive
+                for (Map.Entry<String, List<String>> header : conn.getHeaderFields().entrySet()) {
+                    if (header.getKey() == null) continue;
+                    
+                    String key = header.getKey().toLowerCase();
+                    String value = header.getValue().get(0); // Take first value
 
-                for (Map.Entry<String, String> header : response.getHeaders().entrySet()) {
+                    // Ideally we should use Servent.readICYHeader logic but it takes HttpContext
+                    // We can manually map or just handle key headers here
 
-                    ChannelInfo tmpInfo = channel.info;
-                    Servent.readICYHeader(response, channel.info, null);
-
-                    if (!tmpInfo.name.isEmpty()) {
-                        channel.info.name = tmpInfo.name;
-                    }
-                    if (!tmpInfo.genre.isEmpty()) {
-                        channel.info.genre = tmpInfo.genre;
-                    }
-                    if (!tmpInfo.url.isEmpty()) {
-                        channel.info.url = tmpInfo.url;
-                    }
-
-                    switch (header.getKey()) {
-                        case "icy-metaint" -> channel.icyMetaInterval = Integer.parseInt(header.getValue());
-                        case "location" -> nextURL = header.getValue();
+                    switch (key) {
+                        case "icy-metaint" -> channel.icyMetaInterval = Integer.parseInt(value);
+                        case "location" -> nextURL = value;
                         case "content-type" -> {
-                            if (header.getValue().indexOf(Peercast.MIME_XSCPLS) > 0) {
+                            if (value.indexOf(Peercast.MIME_XSCPLS) > 0) {
                                 playList = PlayList.SCPLS;
-                            } else if (header.getValue().indexOf(Peercast.MIME_PLS) > 0) {
+                            } else if (value.indexOf(Peercast.MIME_PLS) > 0) {
                                 playList = PlayList.PLS;
-                            } else if (header.getValue().indexOf(Peercast.MIME_XPLS) > 0) {
+                            } else if (value.indexOf(Peercast.MIME_XPLS) > 0) {
                                 playList = PlayList.PLS;
-                            } else if (header.getValue().indexOf(Peercast.MIME_M3U) > 0) {
+                            } else if (value.indexOf(Peercast.MIME_M3U) > 0) {
                                 playList = PlayList.PLS;
-                            } else if (header.getValue().indexOf(Peercast.MIME_TEXT) > 0) {
+                            } else if (value.indexOf(Peercast.MIME_TEXT) > 0) {
                                 playList = PlayList.PLS;
-                            } else if (header.getValue().indexOf(Peercast.MIME_ASX) > 0) {
+                            } else if (value.indexOf(Peercast.MIME_ASX) > 0) {
                                 playList = PlayList.ASX;
-                            } else if (header.getValue().indexOf(Peercast.MIME_MMS) > 0) {
+                            } else if (value.indexOf(Peercast.MIME_MMS) > 0) {
                                 channel.info.srcProtocol = ChannelInfo.Protocol.MMS;
                             }
-                            playList.init(1000);
+                            if (playList != null) playList.init(1000);
                         }
                     }
-
+                    
+                    // Simple mapping for channel info update (simplified)
+                    if (key.equals("icy-name")) channel.info.name = value;
+                    if (key.equals("icy-genre")) channel.info.genre = value;
+                    if (key.equals("icy-url")) channel.info.url = value;
                 }
 
-                if (!nextURL.isEmpty() && response.getStatus() == 302) {
+                if (nextURL != null && !nextURL.isEmpty() && responseCode == 302) {
                     logger.log(Level.DEBUG, String.format("Ch.%d redirect: %s", channel.index, nextURL));
                     return nextURL;
                 }
 
-                if (response.getStatus() != 200) {
-                    logger.log(Level.ERROR, "HTTP response: " + response.getStatus());
-                    throw new IOException("Bad HTTP connect");
+                if (responseCode != 200) {
+                    logger.log(Level.ERROR, "HTTP response: " + responseCode);
+                    throw new IOException("Bad HTTP connect: " + responseCode);
                 }
 
-                inputStream = response.getInputStream();
+                inputStream = conn.getInputStream();
 
             } else if (channel.info.srcProtocol.equals(ChannelInfo.Protocol.FILE)) {
 
@@ -288,7 +285,9 @@ class URLSource extends ChannelSource {
 
                 channel.setStatus(Channel.Status.BROADCASTING);
 
-                channel.sock.setSoTimeout(60);    // use longer read timeout
+                if (channel.sock != null) {
+                    channel.sock.setSoTimeout(60);    // use longer read timeout
+                }
 
                 source = channel.createSource();
 

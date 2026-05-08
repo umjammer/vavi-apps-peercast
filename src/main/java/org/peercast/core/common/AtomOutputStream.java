@@ -76,6 +76,9 @@ class AtomOutputStream {
     }
 
     void writeString(ID4 id, String string) throws IOException {
+        if (string == null) {
+            string = "";
+        }
         writeBytes(id, string.getBytes(), string.length());
     }
 

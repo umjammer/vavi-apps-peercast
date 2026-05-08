@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.w3c.dom.Element;
-import vavi.util.Singleton;
 
 import static java.lang.System.getLogger;
 
@@ -115,9 +114,7 @@ class ChannelHitList {
 //logger.log(Level.TRACE, "hit: " + hit.getAddress() + ", " + hit.remoteAddresses[0] + ", " + hit.sessionID);
             if (hit.remoteAddresses[0] != null && hit.remoteAddresses[0].equals(newHit.remoteAddresses[0])) {
                 if (hit.remoteAddresses[1] == null || hit.remoteAddresses[1].equals(newHit.remoteAddresses[1])) {
-                    if (!hit.dead) {
-                        hits.set(hits.indexOf(hit), newHit);
-                    }
+                    hits.set(hits.indexOf(hit), newHit);
                     return newHit;
                 }
             }
@@ -169,14 +166,10 @@ class ChannelHitList {
     void deadHit(ChannelHit targetHit) {
         logger.log(Level.DEBUG, String.format("Dead hit: %s , %s", targetHit.remoteAddresses[0], targetHit.remoteAddresses[1]));
 
-        for (ChannelHit hit : hits) {
-            if (hit.getAddress() != null) {
-                if (hit.remoteAddresses[0].equals(targetHit.remoteAddresses[0]) && ((hit.remoteAddresses[1] == null && targetHit.remoteAddresses[1] == null) || hit.remoteAddresses[1].equals(targetHit.remoteAddresses[1]))) {
-                    hit.dead = true;
-                    logger.log(Level.DEBUG, String.format("*** Dead hit: %s , %s", hit.remoteAddresses[0], hit.remoteAddresses[1]));
-                }
-            }
-        }
+        hits.removeIf(hit -> hit.getAddress() != null &&
+                hit.remoteAddresses[0].equals(targetHit.remoteAddresses[0]) &&
+                ((hit.remoteAddresses[1] == null && targetHit.remoteAddresses[1] == null) ||
+                        (hit.remoteAddresses[1] != null && hit.remoteAddresses[1].equals(targetHit.remoteAddresses[1]))));
     }
 
     /** */

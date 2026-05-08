@@ -11,8 +11,6 @@ import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
 
 import org.w3c.dom.Element;
-import vavi.util.Debug;
-import vavi.util.Singleton;
 
 import static java.lang.System.getLogger;
 
@@ -128,6 +126,14 @@ class ChannelInfo {
                 logger.log(Level.DEBUG, String.format("Ch.%d is Raw", channel.index));
                 return new RawStream();
             }
+        },
+        /** */
+        FLV(".flv") {
+            @Override
+            ChannelStream getChannelStream(Channel channel) {
+                logger.log(Level.DEBUG, String.format("Ch.%d is Raw", channel.index));
+                return new RawStream();
+            }
         };
 
         ContentType(String extention) {
@@ -221,7 +227,7 @@ class ChannelInfo {
         }
 
         if (info.name != null && !info.name.isEmpty()) {
-            if (name.contains(info.name)) {
+            if (name != null && name.contains(info.name)) {
                 return true;
             }
         }
@@ -450,22 +456,22 @@ class ChannelInfo {
     /** */
     void writeInfoAtoms(AtomOutputStream atomOut) throws IOException {
         atomOut.writeParent(PCPStream.PCP_CHAN_INFO, 7);
-        atomOut.writeString(PCPStream.PCP_CHAN_INFO_NAME, name);
+        atomOut.writeString(PCPStream.PCP_CHAN_INFO_NAME, name != null ? name : "");
         atomOut.writeInt(PCPStream.PCP_CHAN_INFO_BITRATE, bitrate);
-        atomOut.writeString(PCPStream.PCP_CHAN_INFO_GENRE, genre);
-        atomOut.writeString(PCPStream.PCP_CHAN_INFO_URL, url);
-        atomOut.writeString(PCPStream.PCP_CHAN_INFO_DESC, desc);
-        atomOut.writeString(PCPStream.PCP_CHAN_INFO_COMMENT, comment);
+        atomOut.writeString(PCPStream.PCP_CHAN_INFO_GENRE, genre != null ? genre : "");
+        atomOut.writeString(PCPStream.PCP_CHAN_INFO_URL, url != null ? url : "");
+        atomOut.writeString(PCPStream.PCP_CHAN_INFO_DESC, desc != null ? desc : "");
+        atomOut.writeString(PCPStream.PCP_CHAN_INFO_COMMENT, comment != null ? comment : "");
         atomOut.writeString(PCPStream.PCP_CHAN_INFO_TYPE, contentType.toString());
     }
 
     /** */
     void writeTrackAtoms(AtomOutputStream atomOut) throws IOException {
         atomOut.writeParent(PCPStream.PCP_CHAN_TRACK, 4);
-        atomOut.writeString(PCPStream.PCP_CHAN_TRACK_TITLE, track.title);
-        atomOut.writeString(PCPStream.PCP_CHAN_TRACK_CREATOR, track.artist);
-        atomOut.writeString(PCPStream.PCP_CHAN_TRACK_URL, track.contact);
-        atomOut.writeString(PCPStream.PCP_CHAN_TRACK_ALBUM, track.album);
+        atomOut.writeString(PCPStream.PCP_CHAN_TRACK_TITLE, track.title != null ? track.title : "");
+        atomOut.writeString(PCPStream.PCP_CHAN_TRACK_CREATOR, track.artist != null ? track.artist : "");
+        atomOut.writeString(PCPStream.PCP_CHAN_TRACK_URL, track.contact != null ? track.contact : "");
+        atomOut.writeString(PCPStream.PCP_CHAN_TRACK_ALBUM, track.album != null ? track.album : "");
     }
 
     /** */

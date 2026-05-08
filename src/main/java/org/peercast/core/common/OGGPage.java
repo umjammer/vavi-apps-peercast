@@ -55,7 +55,7 @@ class OGGPage {
             int b = dis.readInt();
             return a != 0 || b == 0;
         } catch (IOException e) {
-            throw (RuntimeException) new IllegalStateException(e);
+            throw new IllegalStateException(e);
         }
     }
 
@@ -67,7 +67,7 @@ class OGGPage {
             dis.skip(14);
             return dis.readInt();
         } catch (IOException e) {
-            throw (RuntimeException) new IllegalStateException(e);
+            throw new IllegalStateException(e);
         }
     }
 

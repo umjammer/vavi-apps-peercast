@@ -31,13 +31,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.StringTokenizer;
+import org.w3c.dom.Element;
 
 import jakarta.servlet.http.Cookie;
 import org.peercast.core.common.ChannelInfo.ContentType;
 import org.peercast.core.common.ChannelInfo.Protocol;
-import org.w3c.dom.Element;
-import vavi.util.Debug;
-import vavi.util.Singleton;
 import vavi.util.win32.WindowsProperties;
 
 import static java.lang.System.getLogger;
@@ -694,7 +692,9 @@ public class ServentManager {
 
         for (Servent servent : servents) {
             try {
-                servent.server.stop();
+                if (servent.server != null) {
+                    servent.server.stop();
+                }
             } catch (IOException e) {
                 logger.log(Level.ERROR, e.getMessage(), e);
             }
@@ -1161,7 +1161,7 @@ public class ServentManager {
     /**
      * @param url sid?foo=var...
      */
-    boolean getChannel(String url, ChannelInfo info, boolean relay) {
+    Channel getChannel(String url, ChannelInfo info, boolean relay) {
         ChannelManager channelManager = Peercast.channelManager;
         // remove file extension (only added for winamp)
         logger.log(Level.TRACE, "url: " + url);
@@ -1175,24 +1175,21 @@ public class ServentManager {
                     channel.info.lastPlayStart = 0; // force reconnect
                     channel.info.lastPlayEnd = 0;
                 } else {
-                    return false;
+                    return null;
                 }
             }
 
-            info = channel.info; // get updated channel info
-
-            return true;
+            return channel;
         } else {
             if (relay) {
                 channel = channelManager.findAndRelay(info);
                 if (channel != null) {
-                    info = channel.info; // get updated channel info
-                    return true;
+                    return channel;
                 }
             }
         }
 
-        return false;
+        return null;
     }
 
     /** */

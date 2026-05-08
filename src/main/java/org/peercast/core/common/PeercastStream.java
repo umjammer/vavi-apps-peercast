@@ -14,7 +14,6 @@ import java.util.Arrays;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.xml.sax.SAXException;
-import vavi.util.Singleton;
 
 
 /**
@@ -70,7 +69,7 @@ class PeercastStream extends ChannelStream {
                     try {
                         xml = Peercast.db.parse(mem);
                     } catch (SAXException e) {
-                        throw (IOException) new IOException(e);
+                        throw new IOException(e);
                     }
                     Element n = (Element) xml.getElementsByTagName("channel").item(0);
                     if (n != null) {

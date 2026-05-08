@@ -12,9 +12,6 @@ import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
 import java.net.InetSocketAddress;
 
-import vavi.util.Debug;
-import vavi.util.Singleton;
-
 import static java.lang.System.getLogger;
 
 
@@ -239,6 +236,12 @@ class PeercastSource extends ChannelSource {
                 } catch (InterruptedException e) {
                 }
             }
+
+            if (channel.streaming.isCancelled()) {
+                break;
+            }
+
+            channel.setStatus(Channel.Status.SEARCHING);
 
             try {
                 Thread.sleep(Peercast.idleSleepTime);

@@ -58,7 +58,7 @@ static final ServentManager serventManager = new ServentManager();
         return iniFileName;
     }
 
-    private Peercast() {
+    protected Peercast() {
         isQuitting = false;
     }
 
@@ -265,7 +265,7 @@ static final ServentManager serventManager = new ServentManager();
 
     Stats stats = new Stats();
 
-    static int idleSleepTime = 10 * 1000;
+    static int idleSleepTime = 10;
 
     int bytesOutPerSec;
 

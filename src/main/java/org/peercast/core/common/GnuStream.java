@@ -29,7 +29,6 @@ import org.peercast.core.common.GnuPacket.GnuFunction;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.xml.sax.SAXException;
-import vavi.util.Singleton;
 
 import static java.lang.System.getLogger;
 
@@ -237,7 +236,7 @@ class GnuStream {
                     try {
                         xml = Peercast.db.parse(xm);
                     } catch (SAXException e) {
-                        throw (RuntimeException) new IllegalStateException(e);
+                        throw new IllegalStateException(e);
                     }
                     Element n = (Element) xml.getElementsByTagName("channel").item(0);
                     if (n != null) {
@@ -298,7 +297,7 @@ class GnuStream {
                 try {
                     xml = Peercast.db.parse(xm);
                 } catch (SAXException e) {
-                    throw (RuntimeException) new IllegalStateException(e);
+                    throw new IllegalStateException(e);
                 }
                 Element sn = (Element) xml.getElementsByTagName("servent").item(0);
                 if (sn != null) {

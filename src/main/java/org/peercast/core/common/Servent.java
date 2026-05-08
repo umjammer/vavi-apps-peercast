@@ -54,8 +54,6 @@ import vavi.net.http.HttpServletResponseAdapter;
 import vavi.net.http.HttpUtil;
 import vavi.net.inet.InetServer;
 import vavi.net.inet.SocketHandlerFactory;
-import vavi.util.Debug;
-import vavi.util.Singleton;
 import vavi.xml.util.PrettyPrinter;
 
 import static java.lang.System.getLogger;
@@ -163,9 +161,9 @@ class Servent {
             @Override
             public Comparator<ChannelHitList> getComparator(boolean isDown) {
                 if (isDown) {
-                    return (c1, c2) -> c1.info.bitrate - c2.info.bitrate;
+                    return Comparator.comparingInt(c -> c.info.bitrate);
                 } else {
-                    return (c1, c2) -> c1.info.bitrate - c2.info.bitrate;
+                    return Comparator.comparingInt(c -> c.info.bitrate);
                 }
             }
         },
@@ -174,9 +172,9 @@ class Servent {
             @Override
             public Comparator<ChannelHitList> getComparator(boolean isDown) {
                 if (isDown) {
-                    return (c1, c2) -> c1.numListeners() - c2.numListeners();
+                    return Comparator.comparingInt(ChannelHitList::numListeners);
                 } else {
-                    return (c1, c2) -> c1.numListeners() - c2.numListeners();
+                    return Comparator.comparingInt(ChannelHitList::numListeners);
                 }
             }
         },
@@ -185,9 +183,9 @@ class Servent {
             @Override
             public Comparator<ChannelHitList> getComparator(boolean isDown) {
                 if (isDown) {
-                    return (c1, c2) -> c1.numHits() - c2.numHits();
+                    return Comparator.comparingInt(ChannelHitList::numHits);
                 } else {
-                    return (c1, c2) -> c1.numHits() - c2.numHits();
+                    return Comparator.comparingInt(ChannelHitList::numHits);
                 }
             }
         },
@@ -196,9 +194,9 @@ class Servent {
             @Override
             public Comparator<ChannelHitList> getComparator(boolean isDown) {
                 if (isDown) {
-                    return (c1, c2) -> c1.info.contentType.compareTo(c2.info.contentType);
+                    return Comparator.comparing(c -> c.info.contentType);
                 } else {
-                    return (c1, c2) -> c1.info.contentType.compareTo(c2.info.contentType);
+                    return Comparator.comparing(c -> c.info.contentType);
                 }
             }
         },
@@ -222,9 +220,15 @@ class Servent {
     static final int DIRECT_WRITE_TIMEOUT = 60 * 1000;
 
     /** */
+    private static boolean isLocal(InetAddress addr) {
+        return addr.isAnyLocalAddress() || addr.isLoopbackAddress() || addr.isLinkLocalAddress() || addr.isSiteLocalAddress();
+    }
+
+    /** */
     boolean isPrivate() {
         InetSocketAddress h = getHost();
-        return serventManager.isFiltered(ServFilter.Type.PRIVATE.value, h) || h.getAddress().isAnyLocalAddress();
+        InetAddress addr = h.getAddress();
+        return serventManager.isFiltered(ServFilter.Type.PRIVATE.value, h) || isLocal(addr);
     }
 
     /** */
@@ -353,7 +357,7 @@ class Servent {
         InetSocketAddress h = new InetSocketAddress((InetAddress) null, 0);
 
         if (sock != null) {
-            h = (InetSocketAddress) sock.getLocalSocketAddress();
+            h = (InetSocketAddress) sock.getRemoteSocketAddress();
         }
 
         return h;
@@ -823,7 +827,7 @@ class Servent {
                         best.init();
 
                         // find best hit this network if local IP
-                        if (rhost.getAddress().isAnyLocalAddress()) {
+                        if (isLocal(rhost.getAddress())) {
                             chs.init();
                             chs.matchHost = serventManager.serverHost;
                             chs.waitDelay = 2;
@@ -881,7 +885,7 @@ class Servent {
                     // if all else fails, use tracker
                     if (best.getAddress() == null) {
                         // find best tracker on this network if local IP
-                        if (rhost.getAddress().isAnyLocalAddress()) {
+                        if (isLocal(rhost.getAddress())) {
                             chs.init();
                             chs.matchHost = serventManager.serverHost;
                             chs.trackersOnly = true;
@@ -1262,7 +1266,7 @@ class Servent {
                         int cnt = serventManager.getNewestServents(hl, 32, (InetSocketAddress) sock.getRemoteSocketAddress());
                         if (cnt != 0) {
                             int start = new Random(lastConnect).nextInt() % cnt;
-                            int max = cnt > 8 ? 8 : cnt;
+                            int max = Math.min(cnt, 8);
 
                             for (int i = 0; i < max; i++) {
                                 pack.hops = 1;
@@ -1488,14 +1492,14 @@ class Servent {
             logger.log(Level.DEBUG, String.format("Incoming PCP is %s : v%d", agent, version));
         }
 
-        if (rhost.getAddress().isAnyLocalAddress() && serventManager.serverHost.getAddress().isAnyLocalAddress())
+        if (isLocal(rhost.getAddress()) && serventManager.serverHost.getAddress().isAnyLocalAddress())
             rhost = new InetSocketAddress(rhost.getAddress(), serventManager.serverHost.getPort());
 
         if (pingPort != 0) {
             String ripStr = rhost.getHostName();
             logger.log(Level.DEBUG, String.format("Incoming firewalled test request: %s ", ripStr));
             rhost = new InetSocketAddress(rhost.getAddress(), pingPort);
-            if (rhost.getAddress().isAnyLocalAddress() || !pingHost(rhost, rid)) {
+            if (isLocal(rhost.getAddress()) || !pingHost(rhost, rid)) {
                 rhost = new InetSocketAddress(rhost.getAddress(), 0);
             }
         }
@@ -1564,7 +1568,7 @@ class Servent {
                     best.init();
 
                     // find best hit on this network
-                    if (rhost.getAddress().isAnyLocalAddress()) {
+                    if (isLocal(rhost.getAddress())) {
                         chs.init();
                         chs.matchHost = serventManager.serverHost;
                         chs.waitDelay = 2;
@@ -1921,9 +1925,6 @@ class Servent {
                 return true;
             }
 
-            if (request.getInputStream().available() > 0) {
-                break;
-            }
             try {
                 Thread.sleep(100);
             } catch (InterruptedException e) {
@@ -1959,7 +1960,7 @@ class Servent {
                 long connectTime = System.currentTimeMillis();
                 long lastWriteTime = connectTime;
 
-                while (request.getInputStream().available() > 0) {
+                while (!sock.isClosed() && !sock.isInputShutdown() && !Peercast.getInstance().isQuitting) {
                     ch = channelManager.findChannelByID(chanID);
 
                     if (ch != null) {
@@ -2038,7 +2039,7 @@ class Servent {
 
                 long connectTime = System.currentTimeMillis();
 
-                while (sock.getInputStream().available() > 0) {
+                while (!sock.isClosed() && !sock.isInputShutdown() && !Peercast.getInstance().isQuitting) {
 
                     for (int i = 1; i < numChanIDs; i++) {
                         Channel ch = channelManager.findChannelByID(chanIDs[i]);
@@ -2110,7 +2111,7 @@ class Servent {
 
             streamPos = 0; // raw meta channel has no header (its MP3)
 
-            while (sock.getInputStream().available() > 0) {
+            while (!sock.isClosed() && !sock.isInputShutdown() && !Peercast.getInstance().isQuitting) {
                 ch = channelManager.findChannelByID(chanID);
 
                 if (ch != null) {
@@ -5401,22 +5402,23 @@ class Servent {
 
         } else if (fn.startsWith("/pls/")) {
 
-            if (!((InetSocketAddress) sock.getRemoteSocketAddress()).getAddress().isAnyLocalAddress()) {
+            if (!isLocal(((InetSocketAddress) sock.getRemoteSocketAddress()).getAddress())) {
                 if (!isAllowed(ServentManager.Allow.ALLOW_DIRECT) || !isFiltered(ServFilter.Type.DIRECT.value)) {
                     response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
                 }
             }
 
             ChannelInfo info = new ChannelInfo();
-            if (serventManager.getChannel(fn.substring(5), info, isPrivate())) {
-                handshakePLS(request, response, info, false);
+            Channel channel = serventManager.getChannel(fn.substring(5), info, isPrivate());
+            if (channel != null) {
+                handshakePLS(request, response, channel.info, false);
             } else {
                 response.sendError(HttpServletResponse.SC_NOT_FOUND);
             }
 
         } else if (fn.startsWith("/stream/")) {
 
-            if (!((InetSocketAddress) sock.getRemoteSocketAddress()).getAddress().isAnyLocalAddress()) {
+            if (!isLocal(((InetSocketAddress) sock.getRemoteSocketAddress()).getAddress())) {
                 if (!isAllowed(ServentManager.Allow.ALLOW_DIRECT) || !isFiltered(ServFilter.Type.DIRECT.value)) {
                     response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
                 }
@@ -5426,7 +5428,7 @@ class Servent {
 
         } else if (fn.startsWith("/channel/")) {
 
-            if (!((InetSocketAddress) sock.getRemoteSocketAddress()).getAddress().isAnyLocalAddress()) {
+            if (!isLocal(((InetSocketAddress) sock.getRemoteSocketAddress()).getAddress())) {
                 if (!isAllowed(ServentManager.Allow.ALLOW_NETWORK) || !isFiltered(ServFilter.Type.NETWORK.value)) {
                     response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
                 }
@@ -5652,7 +5654,13 @@ class Servent {
 
         ChannelInfo info = new ChannelInfo();
 
-        serventManager.getChannel(url, info, relay);
+        Channel channel = serventManager.getChannel(url, info, relay);
+        if (channel == null) {
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
+
+        info = channel.info;
 
         if (proto.equals(ChannelInfo.Protocol.PCP)) {
             type = Type.RELAY;
@@ -5668,7 +5676,7 @@ class Servent {
     /** TODO should move to PlayList */
     void writePLSHeader(OutputStream s, PlayList type) {
         PrintStream ps = new PrintStream(s);
-        ps.println(String.valueOf(HttpServletResponse.SC_OK));
+        ps.println(HttpServletResponse.SC_OK);
         ps.printf("%s %s\n", Peercast.HTTP_HS_SERVER, GnuPacket.PCX_AGENT);
 
         String content = switch (type) {
@@ -5687,7 +5695,7 @@ class Servent {
 
     /** */
     void handshakePLS(HttpServletRequest request, HttpServletResponse response, ChannelInfo info, boolean doneHandshake) throws IOException {
-        String url = null;
+        String url;
 
         BufferedReader reader = new BufferedReader(new InputStreamReader(request.getInputStream()));
         if (!doneHandshake) {
@@ -5696,7 +5704,7 @@ class Servent {
             }
         }
 
-        if (getLocalURL(url)) {
+        if ((url = getLocalURL()) != null) {
 
             PlayList type;
 
@@ -5719,7 +5727,7 @@ class Servent {
 
     /** */
     void handshakePLS(ChannelHitList[] cl, int num, boolean doneHandshake) throws IOException {
-        String url = null;
+        String url;
 
         BufferedReader reader = new BufferedReader(new InputStreamReader(sock.getInputStream()));
         String in = reader.readLine();
@@ -5728,7 +5736,7 @@ class Servent {
             }
         }
 
-        if (getLocalURL(url)) {
+        if ((url = getLocalURL()) != null) {
             writePLSHeader(sock.getOutputStream(), PlayList.SCPLS);
 
             PlayList pls = PlayList.SCPLS;
@@ -5743,14 +5751,14 @@ class Servent {
     }
 
     /** */
-    boolean getLocalURL(String str) throws IOException {
+    String getLocalURL() throws IOException {
         if (sock == null) {
             throw new IOException("Not connected");
         }
 
         InetSocketAddress h;
 
-        if (((InetSocketAddress) sock.getRemoteSocketAddress()).getAddress().isAnyLocalAddress()) {
+        if (isLocal(((InetSocketAddress) sock.getRemoteSocketAddress()).getAddress())) {
             h = (InetSocketAddress) sock.getLocalSocketAddress();
         } else {
             h = serventManager.serverHost;
@@ -5760,8 +5768,7 @@ class Servent {
 
         String ipStr = h.getHostName();
 
-        str = String.format("http://%s", ipStr);
-        return true;
+        return String.format("http://%s", ipStr);
     }
 
     /**
@@ -5831,7 +5838,7 @@ class Servent {
             }
         }
 
-        if (((InetSocketAddress) sock.getRemoteSocketAddress()).getAddress().isAnyLocalAddress()) {
+        if (isLocal(((InetSocketAddress) sock.getRemoteSocketAddress()).getAddress())) {
             return true;
         }
 
@@ -6004,7 +6011,7 @@ class Servent {
                         } else if (curr.equals("clientactive")) {
                             serventManager.autoConnect = Boolean.parseBoolean(request.getParameter(curr));
                         } else if (curr.equals("yp")) {
-                            serventManager.rootHost = new String(request.getParameter(curr)); // ESC
+                            serventManager.rootHost = request.getParameter(curr); // ESC
                         } else if (curr.equals("deadhitage")) {
                             channelManager.deadHitAge = Integer.parseInt(request.getParameter(curr));
                         } else if (curr.equals("refresh")) {
@@ -6363,7 +6370,6 @@ class Servent {
                     id.generate();
                     String idstr = id.toString();
 
-                    cookie.setComment(idstr); // TODO html structure
                     cookie.setValue(((InetSocketAddress) sock.getRemoteSocketAddress()).getAddress().getHostName());
                     serventManager.cookieList.add(cookie);
 

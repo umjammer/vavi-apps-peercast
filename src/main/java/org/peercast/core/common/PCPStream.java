@@ -29,8 +29,6 @@ import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import vavi.util.Debug;
-import vavi.util.Singleton;
 import vavi.util.StringUtil;
 
 import static java.lang.System.getLogger;
@@ -316,12 +314,8 @@ class PCPStream extends ChannelStream {
     }
 
     void kill() {
-        try {
-            inData.wait();
-            outData.wait();
-        } catch (InterruptedException e) {
-            logger.log(Level.ERROR, e.getMessage(), e);
-        }
+        inData.init();
+        outData.init();
     }
 
     /** */

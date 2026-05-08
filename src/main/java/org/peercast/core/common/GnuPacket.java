@@ -24,7 +24,6 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 import vavi.io.UtilInputStream;
-import vavi.util.Singleton;
 import vavi.xml.util.PrettyPrinter;
 
 import static java.lang.System.getLogger;

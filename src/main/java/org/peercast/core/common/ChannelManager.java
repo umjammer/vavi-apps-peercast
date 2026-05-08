@@ -16,9 +16,6 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 
-import vavi.util.Debug;
-import vavi.util.Singleton;
-
 import static java.lang.System.getLogger;
 
 
@@ -191,13 +188,22 @@ public class ChannelManager {
                 break;
             }
 
+            if (channel.isError()) {
+                Peercast.getInstance().notifyMessage(ServentManager.NotifyType.PEERCAST, "Channel error");
+                return null;
+            }
+
             try {
                 Thread.sleep(100);
             } catch (InterruptedException ignored) {
             }
         }
 
-        return channel;
+        if (channel.isPlaying() && (channel.info.contentType != ChannelInfo.ContentType.UNKNOWN)) {
+            return channel;
+        }
+
+        return null;
     }
 
     /** */

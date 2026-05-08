@@ -15,8 +15,6 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 
 import org.w3c.dom.Element;
-import vavi.util.Debug;
-import vavi.util.Singleton;
 
 import static java.lang.System.getLogger;
 

@@ -49,7 +49,11 @@ class MMSStream extends ChannelStream {
     int readPacket(InputStream is, Channel channel) throws IOException {
         ASFChunk chunk = new ASFChunk();
 
-        chunk.read(is);
+        try {
+            chunk.read(is);
+        } catch (java.io.EOFException e) {
+            return -1;
+        }
 
         switch (chunk.type) {
             case 0x4824: // asf header

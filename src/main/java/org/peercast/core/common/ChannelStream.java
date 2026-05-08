@@ -21,8 +21,6 @@ import java.io.OutputStream;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
 
-import vavi.util.Singleton;
-
 import static java.lang.System.getLogger;
 
 

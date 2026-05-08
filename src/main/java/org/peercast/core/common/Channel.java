@@ -32,8 +32,6 @@ import org.w3c.dom.Element;
 import vavi.net.http.HttpContext;
 import vavi.net.http.HttpProtocol;
 import vavi.net.http.HttpUtil;
-import vavi.util.Debug;
-import vavi.util.Singleton;
 
 import static java.lang.System.getLogger;
 
@@ -154,33 +152,25 @@ class Channel {
                     break;
                 }
 
-//new Exception("***DUMMY***: " + is.available()).printStackTrace();
-                if (is.available() <= 0) {
-                    logger.log(Level.DEBUG, String.format("Ch.%d eof", index));
+                error = source.readPacket(is, this);
+
+                if (error != 0) {
                     break;
                 }
 
-                if (is.available() > 0) {
-                    error = source.readPacket(is, this);
-
-                    if (error != 0) {
-                        break;
-                    }
-
-                    if (rawData.writePos > 0) {
-                        if (isBroadcasting()) {
-                            if ((System.currentTimeMillis() - lastTrackerUpdate) >= channelManager.hostUpdateInterval) {
-                                GnuID noID = new GnuID();
-                                noID.clear();
-                                broadcastTrackerUpdate(noID, false);
-                            }
-                            wasBroadcasting = true;
-
-                        } else {
-                            setStatus(Status.RECEIVING);
+                if (rawData.writePos > 0) {
+                    if (isBroadcasting()) {
+                        if ((System.currentTimeMillis() - lastTrackerUpdate) >= channelManager.hostUpdateInterval) {
+                            GnuID noID = new GnuID();
+                            noID.clear();
+                            broadcastTrackerUpdate(noID, false);
                         }
-                        source.updateStatus(this);
+                        wasBroadcasting = true;
+
+                    } else {
+                        setStatus(Status.RECEIVING);
                     }
+                    source.updateStatus(this);
                 }
 
                 try {
@@ -346,7 +336,7 @@ class Channel {
     /** */
     void newPacket(ChannelPacket packet) {
         if (packet.type != ChannelPacket.Type.PCP) {
-            rawData.writePacket(packet, true);
+            rawData.writePacket(packet, false);
         }
     }
 
@@ -764,6 +754,10 @@ class Channel {
 
     boolean isPlaying() {
         return status.equals(Status.RECEIVING) || status.equals(Status.BROADCASTING);
+    }
+
+    boolean isError() {
+        return status.equals(Status.ERROR);
     }
 
     boolean isReceiving() {

@@ -20,7 +20,6 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
-import vavi.util.Debug;
 
 import static java.lang.System.getLogger;
 
@@ -120,7 +119,7 @@ enum PlayList {
             try {
                 xml = Peercast.db.parse(in);
             } catch (SAXException e) {
-                throw (RuntimeException) new IllegalStateException(e);
+                throw new IllegalStateException(e);
             } // TODO: eof is NOT handled properly in sockets - always get error at end
 
             NodeList nodeList = xml.getChildNodes();
