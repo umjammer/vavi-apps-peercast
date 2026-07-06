@@ -35,7 +35,7 @@ class GnuID {
     }
 
     /**
-     * @param str "23450ABCDEF1..." 32 �����܂ł�����͂��Ȃ��A���̌�؂�̂�
+     * @param str "23450ABCDEF1..." Only the first 32 characters are parsed, and then the rest are truncated.
      */
     GnuID(String str) {
         if (str == null || str.length() < 32) {

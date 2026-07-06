@@ -381,9 +381,9 @@ public class ChannelManager {
     }
 
     /**
-     * info ���� ChanHitList ��쐬�� channelHitLists �ɒǉB���
+     * Create a ChanHitList from info and add it to channelHitLists.
      *
-     * @return �ǉB��ꂽ ChanHitList
+     * @return Added to ChanHitList
      */
     ChannelHitList addHitList(ChannelInfo info) {
         ChannelHitList chl = null;

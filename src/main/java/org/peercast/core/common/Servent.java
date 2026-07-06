@@ -5560,7 +5560,7 @@ class Servent {
             return false;
         }
 
-        // TODO !!! ���݂����Y�ݒ� !!!
+        // TODO !!! Parameter settings !!!
         logger.log(Level.TRACE, String.format("bitrate: %b, relay: %b, direct: %b, play: %b, channel: %b", serventManager.bitrateFull(ch.getBitrate()), (type.equals(Type.RELAY) && serventManager.relaysFull()), (type.equals(Type.DIRECT) && serventManager.directFull()), !ch.isPlaying(), ch.isFull()));
         if (!isPrivate()) {
             if (serventManager.bitrateFull(ch.getBitrate()) ||

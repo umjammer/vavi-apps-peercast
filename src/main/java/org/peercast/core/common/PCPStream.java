@@ -713,7 +713,7 @@ class PCPStream extends ChannelStream {
 
     /** */
     private void readChanAtoms(AtomInputStream atomIn, int childCount, BroadcastState bcs) throws IOException {
-        ChannelInfo newInfo = new ChannelInfo(); // TODO ���ʂȋC��...
+        ChannelInfo newInfo = new ChannelInfo(); // TODO It feels like a waste of time...
 
         Channel ch = chanelManager.findChannelByID(bcs.chanID);
         ChannelHitList chl = chanelManager.findHitListByID(bcs.chanID);

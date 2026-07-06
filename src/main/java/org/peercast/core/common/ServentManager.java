@@ -1219,7 +1219,7 @@ public class ServentManager {
     }
 
     /**
-     * url ����p�����[�^�����o���Đݒ肵�܂��B
+     * The parameters are extracted from the URL and set.
      * TODO move to ChanInfo
      */
     void procConnectArgs(String url, ChannelInfo info) {

@@ -345,7 +345,7 @@ class ChannelInfo {
     }
 
     /**
-     * @param idString "23450ABCDEF1..." 32 �����܂ł�����͂��Ȃ��A���̌�؂�̂�
+     * @param idString "23450ABCDEF1..." Only the first 32 characters are parsed, and then the rest are truncated.
      */
     void initNameID(String idString) {
         init();
@@ -363,16 +363,16 @@ class ChannelInfo {
         bitrate = 0;
         contentType = ContentType.UNKNOWN;
         srcProtocol = Protocol.UNKNOWN;
-        id = new GnuID(); // TODO ���ʂȋC��...
+        id = new GnuID(); // TODO It feels like a waste of time...
         id.clear();
         url = null;
         genre = null;
         comment = null;
-        track = new TrackInfo(); // TODO ���ʂȋC��...
+        track = new TrackInfo(); // TODO It feels like a waste of time...
         lastPlayStart = 0;
         lastPlayEnd = 0;
         numSkips = 0;
-        bcID = new GnuID(); // TODO ���ʂȋC��...
+        bcID = new GnuID(); // TODO It feels like a waste of time...
         bcID.clear();
         createdTime = 0;
     }
