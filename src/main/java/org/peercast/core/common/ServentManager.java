@@ -867,7 +867,7 @@ public class ServentManager {
         iniFile.setProperty("Server.maxRelays", String.valueOf(maxRelays));
         iniFile.setProperty("Server.maxDirect", String.valueOf(maxDirect));
         iniFile.setProperty("Server.maxRelaysPerChannel", String.valueOf(channelManager.maxRelaysPerChannel));
-        iniFile.setProperty("Server.firewallTimeout", String.valueOf(firewallTimeout));
+        iniFile.setProperty("Server.firewallTimeout", String.valueOf(firewallTimeout / 1000));
         iniFile.setProperty("Server.forceNormal", String.valueOf(forceNormal));
         iniFile.setProperty("Server.rootMsg", rootMsg);
         iniFile.setProperty("Server.authType", authType == AuthType.COOKIE ? "cookie" : "http-basic");
@@ -879,27 +879,27 @@ public class ServentManager {
 
         iniFile.setProperty("Server.networkID", networkID.toString());
 
-        iniFile.setProperty("Broadcast.broadcastMsgInterval", String.valueOf(channelManager.broadcastMsgInterval));
+        iniFile.setProperty("Broadcast.broadcastMsgInterval", String.valueOf(channelManager.broadcastMsgInterval / 1000));
         iniFile.setProperty("Broadcast.broadcastMsg", String.valueOf(channelManager.broadcastMessage));
         iniFile.setProperty("Broadcast.icyMetaInterval", String.valueOf(channelManager.icyMetaInterval));
 
         iniFile.setProperty("Broadcast.broadcastID", channelManager.broadcastID.toString());
-        iniFile.setProperty("Broadcast.hostUpdateInterval", String.valueOf(channelManager.hostUpdateInterval));
+        iniFile.setProperty("Broadcast.hostUpdateInterval", String.valueOf(channelManager.hostUpdateInterval / 1000));
         iniFile.setProperty("Broadcast.maxControlConnections", String.valueOf(maxControl));
         iniFile.setProperty("Broadcast.rootHost", rootHost);
 
-        iniFile.setProperty("Client.refreshHTML", String.valueOf(refreshHTML));
+        iniFile.setProperty("Client.refreshHTML", String.valueOf(refreshHTML / 1000));
         iniFile.setProperty("Client.relayBroadcast", String.valueOf(relayBroadcast));
         iniFile.setProperty("Client.minBroadcastTTL", String.valueOf(channelManager.minBroadcastTTL));
         iniFile.setProperty("Client.maxBroadcastTTL", String.valueOf(channelManager.maxBroadcastTTL));
         iniFile.setProperty("Client.pushTries", String.valueOf(channelManager.pushTries));
-        iniFile.setProperty("Client.pushTimeout", String.valueOf(channelManager.pushTimeout));
+        iniFile.setProperty("Client.pushTimeout", String.valueOf(channelManager.pushTimeout / 1000));
         iniFile.setProperty("Client.maxPushHops", String.valueOf(channelManager.maxPushHops));
         iniFile.setProperty("Client.autoQuery", String.valueOf(channelManager.autoQuery));
         iniFile.setProperty("Client.queryTTL", String.valueOf(queryTTL));
 
         iniFile.setProperty("Privacy.password", password);
-        iniFile.setProperty("Privacy.maxUptime", String.valueOf(channelManager.maxUptime));
+        iniFile.setProperty("Privacy.maxUptime", String.valueOf(channelManager.maxUptime / 1000));
 
         for (ServFilter filter : filters) {
             writeFilterSettings(iniFile, filter);

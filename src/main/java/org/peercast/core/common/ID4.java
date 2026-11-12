@@ -74,7 +74,7 @@ class ID4 {
     /** */
     public static ID4 read(InputStream in) throws IOException {
         ID4 id = new ID4();
-        int r = in.read(id.cv, 0, 4);
+        int r = in.readNBytes(id.cv, 0, 4);
         if (r != 4) {
             throw new EOFException();
         }

@@ -69,7 +69,7 @@ public class AtomInputStream {
      */
     void skip(int c, int d) throws IOException {
         if (d != 0) {
-            dis.skip(d);
+            skipFully(d);
         }
 
         for (int i = 0; i < c; i++) {
@@ -109,7 +109,8 @@ public class AtomInputStream {
     /** */
     int readBytes(byte[] bytes, int length) throws IOException {
 //        checkData(length);
-        return dis.read(bytes, 0, length);
+        dis.readFully(bytes, 0, length);
+        return length;
     }
 
     /** TODO max check */
@@ -128,7 +129,7 @@ public class AtomInputStream {
             readBytes(bytes, dataLength);
         } else {
             readBytes(bytes, max);
-            dis.skip(dataLength - max);
+            skipFully(dataLength - max);
         }
     }
 
@@ -141,10 +142,22 @@ public class AtomInputStream {
                 rlen = length;
             }
 
-            dis.read(tmp, 0, rlen);
+            dis.readFully(tmp, 0, rlen);
             os.write(tmp, 0, rlen);
 
             length -= rlen;
+        }
+    }
+
+    /** skips exactly n bytes, a socket stream may skip less than requested */
+    private void skipFully(int n) throws IOException {
+        while (n > 0) {
+            int r = dis.skipBytes(n);
+            if (r <= 0) {
+                dis.readUnsignedByte(); // blocks or throws EOFException
+                r = 1;
+            }
+            n -= r;
         }
     }
 
