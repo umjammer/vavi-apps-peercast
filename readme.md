@@ -5,6 +5,8 @@
 
 # vavi-apps-peercast
 
+<img alt="logo" src="src/test/resources/duke_dj.png" width="180" />
+
 Provides peercast for Java.
 
 ## Install
@@ -13,13 +15,24 @@ Provides peercast for Java.
 
 ## Usage
 
+```java
+$ mvn test -Dtest=FlvPlayTest -Dpeercast.playTime=60000 -Dvavi.test.volume=0.5
+```
+
+`peercast.playTime=0` playing forever
+
 ## References
 
-### License
+ * [http://www.peercast.org/](https://web.archive.org/web/20110410123112/http://www.peercast.org/)
+ * https://github.com/kumaryu/peercaststation/
 
-<a href="http://www.peercast.org/">peercast</a>
+### License
 
 | PeerCast is licensed under the terms of the <a href="http://www.peercast.org/license.php">GPL license</a>, you are free to download, modify and distribute it as long as you agree to the terms of the GPL. The full text of which can be found <a href="http://www.gnu.org/copyleft/gpl.html">here</a>.
 
 ## TODO
+
+---
+
+<sub>image designed by @umjammer, drawn by nano banana</sub>
 
