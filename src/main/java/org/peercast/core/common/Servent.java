@@ -35,6 +35,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 
@@ -5405,6 +5406,7 @@ class Servent {
             if (!isLocal(((InetSocketAddress) sock.getRemoteSocketAddress()).getAddress())) {
                 if (!isAllowed(ServentManager.Allow.ALLOW_DIRECT) || !isFiltered(ServFilter.Type.DIRECT.value)) {
                     response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+                    return;
                 }
             }
 
@@ -5674,23 +5676,36 @@ class Servent {
     }
 
     /** TODO should move to PlayList */
-    void writePLSHeader(OutputStream s, PlayList type) {
-        PrintStream ps = new PrintStream(s);
-        ps.println(HttpServletResponse.SC_OK);
-        ps.printf("%s %s\n", Peercast.HTTP_HS_SERVER, GnuPacket.PCX_AGENT);
-
-        String content = switch (type) {
+    private static String plsContentType(PlayList type) {
+        return switch (type) {
             case PLS -> Peercast.MIME_XM3U;
             case ASX -> Peercast.MIME_ASX;
             case RAM -> Peercast.MIME_RAM;
             default -> Peercast.MIME_TEXT;
         };
-        ps.printf("%s %s\n", Peercast.HTTP_HS_CONTENT, content);
-        ps.println("Content-Disposition: inline");
-        ps.println("Cache-Control: private");
-        ps.printf("%s %s\n", Peercast.HTTP_HS_CONNECTION, "close");
+    }
 
-        ps.println();
+    /** for a raw socket */
+    void writePLSHeader(OutputStream s, PlayList type) {
+        PrintStream ps = new PrintStream(s);
+        ps.print("HTTP/1.0 200 OK\r\n");
+        ps.printf("%s: %s\r\n", Peercast.HTTP_HS_SERVER, GnuPacket.PCX_AGENT);
+        ps.printf("%s: %s\r\n", Peercast.HTTP_HS_CONTENT, plsContentType(type));
+        ps.print("Content-Disposition: inline\r\n");
+        ps.print("Cache-Control: private\r\n");
+        ps.printf("%s: %s\r\n", Peercast.HTTP_HS_CONNECTION, "close");
+        ps.print("\r\n");
+        ps.flush();
+    }
+
+    /** for a servlet response, headers must not be written into the body */
+    void setPLSHeader(HttpServletResponse response, PlayList type) {
+        response.setStatus(HttpServletResponse.SC_OK);
+        response.setHeader(Peercast.HTTP_HS_SERVER, GnuPacket.PCX_AGENT);
+        response.setContentType(plsContentType(type));
+        response.setHeader("Content-Disposition", "inline");
+        response.setHeader("Cache-Control", "private");
+        response.setHeader(Peercast.HTTP_HS_CONNECTION, "close");
     }
 
     /** */
@@ -5717,7 +5732,7 @@ class Servent {
                 type = PlayList.PLS;
             }
 
-            writePLSHeader(response.getOutputStream(), type);
+            setPLSHeader(response, type);
 
             type.init(1);
             type.addChannel(url, info);
@@ -5965,8 +5980,15 @@ class Servent {
                         } else if (curr.equals("forceip")) {
                             serventManager.forceIP = request.getParameter(curr);
                         } else if (curr.equals("htmlPath")) {
-                            serventManager.htmlPath = "html/";
-                            serventManager.htmlPath = request.getParameter(curr);
+                            // used in redirects, accept only "html/<language>" (no open redirect)
+                            String value = request.getParameter(curr);
+                            for (String lang : Locale.getISOLanguages()) {
+                                String candidate = "html/" + lang;
+                                if (candidate.equals(value)) {
+                                    serventManager.htmlPath = candidate;
+                                    break;
+                                }
+                            }
                         } else if (curr.equals("djmsg")) {
                             String msg = request.getParameter(curr);
                             channelManager.setBroadcastMessage(msg);

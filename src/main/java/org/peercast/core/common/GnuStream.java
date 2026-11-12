@@ -26,6 +26,8 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 
 import org.peercast.core.common.GnuPacket.GnuFunction;
+import javax.xml.parsers.ParserConfigurationException;
+
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.xml.sax.SAXException;
@@ -234,8 +236,8 @@ class GnuStream {
                     ByteArrayInputStream xm = new ByteArrayInputStream(xmlData.getBytes());
                     Document xml = null;
                     try {
-                        xml = Peercast.db.parse(xm);
-                    } catch (SAXException e) {
+                        xml = Peercast.newDocumentBuilder().parse(xm);
+                    } catch (SAXException | ParserConfigurationException e) {
                         throw new IllegalStateException(e);
                     }
                     Element n = (Element) xml.getElementsByTagName("channel").item(0);
@@ -295,8 +297,8 @@ class GnuStream {
                 ByteArrayInputStream xm = new ByteArrayInputStream(privData, 0, privLen);
                 Document xml;
                 try {
-                    xml = Peercast.db.parse(xm);
-                } catch (SAXException e) {
+                    xml = Peercast.newDocumentBuilder().parse(xm);
+                } catch (SAXException | ParserConfigurationException e) {
                     throw new IllegalStateException(e);
                 }
                 Element sn = (Element) xml.getElementsByTagName("servent").item(0);

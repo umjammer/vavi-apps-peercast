@@ -240,13 +240,28 @@ static final ServentManager serventManager = new ServentManager();
     static DocumentBuilder db;
 
     static {
-        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-        dbf.setNamespaceAware(true);
         try {
-            db = dbf.newDocumentBuilder();
+            db = newDocumentBuilder();
         } catch (ParserConfigurationException e) {
             logger.log(Level.ERROR, e.getMessage(), e);
         }
+    }
+
+    /**
+     * Creates a parser for xml coming from the network, DTDs and external entities are rejected (XXE).
+     * a {@link DocumentBuilder} is not thread safe, use a new one for each parse.
+     */
+    static DocumentBuilder newDocumentBuilder() throws ParserConfigurationException {
+        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+        dbf.setNamespaceAware(true);
+        dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        dbf.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        dbf.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        dbf.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+        dbf.setFeature(javax.xml.XMLConstants.FEATURE_SECURE_PROCESSING, true);
+        dbf.setXIncludeAware(false);
+        dbf.setExpandEntityReferences(false);
+        return dbf.newDocumentBuilder();
     }
 
     /**  */

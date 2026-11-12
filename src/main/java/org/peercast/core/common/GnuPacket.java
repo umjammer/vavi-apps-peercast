@@ -19,6 +19,8 @@ import java.util.List;
 
 import org.peercast.core.common.GnuStream.ResultType;
 import org.peercast.core.common.Stats.STAT;
+import javax.xml.parsers.ParserConfigurationException;
+
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -187,8 +189,8 @@ class GnuPacket {
             if (xm.startsWith("<?xml")) {
                 Document xml;
                 try {
-                    xml = Peercast.db.parse(xm);
-                } catch (SAXException e) {
+                    xml = Peercast.newDocumentBuilder().parse(xm);
+                } catch (SAXException | ParserConfigurationException e) {
                     throw new IllegalStateException(e);
                 }
                 NodeList nodeList = xml.getElementsByTagName("channel");

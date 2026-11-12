@@ -11,8 +11,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
 import org.w3c.dom.Document;
@@ -29,19 +27,6 @@ import org.xml.sax.SAXException;
 class PeercastStream extends ChannelStream {
 
     private final ChannelManager chanMgr = Peercast.channelManager;
-
-    private Document parseMetaXmlSecurely(ByteArrayInputStream mem) throws IOException, SAXException, ParserConfigurationException {
-        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
-        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-        factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
-        factory.setXIncludeAware(false);
-        factory.setExpandEntityReferences(false);
-        factory.setFeature(javax.xml.XMLConstants.FEATURE_SECURE_PROCESSING, true);
-        DocumentBuilder builder = factory.newDocumentBuilder();
-        return builder.parse(mem);
-    }
 
     @Override
     int readHeader(InputStream is, Channel channel) throws IOException {
@@ -84,7 +69,7 @@ class PeercastStream extends ChannelStream {
                 if (pack.data.length != 0) {
                     Document xml;
                     try {
-                        xml = parseMetaXmlSecurely(mem);
+                        xml = Peercast.newDocumentBuilder().parse(mem);
                     } catch (SAXException | ParserConfigurationException e) {
                         throw new IOException(e);
                     }

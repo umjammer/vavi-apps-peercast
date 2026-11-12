@@ -14,6 +14,10 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+
+import javax.xml.parsers.ParserConfigurationException;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -105,7 +109,7 @@ enum PlayList {
             ps.println("<ASX Version=\"3.0\">");
             for (int i = 0; i < numURLs; i++) {
                 ps.println("<ENTRY>");
-                ps.printf("<REF href = \"%s\" />\n", urls[i]);
+                ps.printf("<REF href = \"%s\" />\n", escapeXml(urls[i]));
                 ps.println("</ENTRY>");
             }
             ps.println("</ASX>");
@@ -117,8 +121,8 @@ enum PlayList {
 
             Document xml;
             try {
-                xml = Peercast.db.parse(in);
-            } catch (SAXException e) {
+                xml = Peercast.newDocumentBuilder().parse(in);
+            } catch (SAXException | ParserConfigurationException e) {
                 throw new IllegalStateException(e);
             } // TODO: eof is NOT handled properly in sockets - always get error at end
 
@@ -173,8 +177,8 @@ enum PlayList {
 
     void addURL(String url, String tit) {
         if (numURLs < maxURLs) {
-            urls[numURLs] = url;
-            titles[numURLs] = tit;
+            urls[numURLs] = singleLine(url);
+            titles[numURLs] = singleLine(tit);
             numURLs++;
         }
     }
@@ -182,11 +186,21 @@ enum PlayList {
     /** */
     void addChannel(String path, ChannelInfo info) {
 
-        String idStr = info.id.toString();
-        String nid = info.id.isSet() ? idStr : info.name;
+        // the name may come from a request path or the network, never write it raw
+        String nid = info.id.isSet() ? info.id.toString() : URLEncoder.encode(String.valueOf(info.name), StandardCharsets.UTF_8);
 
         String url = String.format("%s/stream/%s%s", path, nid, info.contentType.extention);
         addURL(url, info.name);
+    }
+
+    /** a playlist entry is one line, drops line breaks and other control characters */
+    static String singleLine(String s) {
+        return s == null ? null : s.replaceAll("\\p{Cntrl}", "");
+    }
+
+    /** for xml attribute values */
+    static String escapeXml(String s) {
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&apos;");
     }
 
     int numURLs, maxURLs;
