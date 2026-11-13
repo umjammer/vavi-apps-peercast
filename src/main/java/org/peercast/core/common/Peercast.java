@@ -15,28 +15,24 @@
 package org.peercast.core.common;
 
 import java.io.IOException;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.net.InetSocketAddress;
 import java.net.URL;
 import java.nio.ByteBuffer;
-
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.peercast.core.common.ServentManager.NotifyType;
 import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.peercast.core.common.ServentManager.NotifyType;
-
 import vavi.net.http.HttpUtil;
 import vavi.util.Debug;
-import vavi.util.Singleton;
-import vavix.util.screenscrape.Scraper;
-import vavix.util.screenscrape.SimpleURLScraper;
-import vavix.util.screenscrape.StringSimpleXPathScraper;
+import vavix.util.screenscrape.XPathStream;
+
+import static java.lang.System.getLogger;
 
 
 /**
@@ -44,11 +40,11 @@ import vavix.util.screenscrape.StringSimpleXPathScraper;
  */
 abstract class Peercast {
 
-    static Log log = LogFactory.getLog(Peercast.class);
+    private static final Logger logger = getLogger(Peercast.class.getName());
 
-    private static ServentManager serventManager = Singleton.getInstance(ServentManager.class);
+static final ServentManager serventManager = new ServentManager();
 
-    private static ChannelManager channelManager = Singleton.getInstance(ChannelManager.class);
+    static final ChannelManager channelManager = new ChannelManager();
 
     static String iniFileName;
 
@@ -62,7 +58,7 @@ abstract class Peercast {
         return iniFileName;
     }
 
-    private Peercast() {
+    protected Peercast() {
         isQuitting = false;
     }
 
@@ -80,114 +76,114 @@ abstract class Peercast {
         serventManager.start();
     }
 
-    /** */
+    /**  */
     void setNotifyMask(int mask) {
         serventManager.notifyMask = mask;
     }
 
-    /** */
+    /**  */
     int getNotifyMask() {
         return serventManager.notifyMask;
     }
 
-    /** */
+    /**  */
     void setAutoConnect(boolean on) {
         serventManager.autoConnect = on;
     }
 
-    /** */
+    /**  */
     boolean getAutoConnect() {
         return serventManager.autoConnect;
     }
 
-    /** */
+    /**  */
     void setMaxOutput(int kbps) {
         serventManager.maxBitrateOut = kbps;
     }
 
-    /** */
+    /**  */
     int getMaxOutput() {
         return serventManager.maxBitrateOut;
     }
 
-    /** */
+    /**  */
     void setMaxRelays(int max) {
         serventManager.setMaxRelays(max);
     }
 
-    /** */
+    /**  */
     int getMaxRelays() {
         return serventManager.maxRelays;
     }
 
-    /** */
+    /**  */
     void setActive(boolean on) {
         serventManager.autoConnect = on;
         serventManager.autoServe = on;
     }
 
-    /** */
+    /**  */
     boolean getActive() {
         return serventManager.autoConnect && serventManager.autoServe;
     }
 
-    /** */
+    /**  */
     void saveSettings() {
         serventManager.saveSettings(getIniFilename());
     }
 
-    /** */
+    /**  */
     void quit() {
         isQuitting = true;
         channelManager.quit();
         serventManager.quit();
     }
 
-    /** */
+    /**  */
     void setServerPort(int port) {
         serventManager.serverHost = new InetSocketAddress(serventManager.serverHost.getAddress(), port);
         serventManager.restartServer = true;
     }
 
-    /** */
+    /**  */
     int getServerPort() {
         return serventManager.serverHost.getPort();
     }
 
-    /** */
-    void setServerPassword(final String password) {
+    /**  */
+    void setServerPassword(String password) {
         serventManager.password = password;
     }
 
-    /** */
+    /**  */
     final String getServerPassword() {
         return serventManager.password;
     }
 
-    /** */
+    /**  */
     void callLocalURL(String url) throws IOException {
-        Runtime.getRuntime().exec("IExplorer " + new URL("http", "localhost", serventManager.serverHost.getPort(), url).toString());
+        Runtime.getRuntime().exec("IExplorer " + new URL("http", "localhost", serventManager.serverHost.getPort(), url));
     }
 
-    /** */
+    /**  */
     abstract void notifyMessage(NotifyType type, String string);
 
-    /** */
+    /**  */
     abstract void delChannel(ChannelInfo info);
 
-    /** */
+    /**  */
     abstract void addChannel(ChannelInfo info);
 
-    /** */
+    /**  */
     abstract void channelStart(ChannelInfo info);
 
-    /** */
+    /**  */
     abstract void channelStop(ChannelInfo info);
 
-    /** */
+    /**  */
     abstract void channelUpdate(ChannelInfo info);
 
-    /** */
+    /**  */
     abstract void updateSettings();
 
     boolean isQuitting;
@@ -244,22 +240,37 @@ abstract class Peercast {
     static DocumentBuilder db;
 
     static {
-        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-        dbf.setNamespaceAware(true);
         try {
-            db = dbf.newDocumentBuilder();
+            db = newDocumentBuilder();
         } catch (ParserConfigurationException e) {
-            log.error(e);
+            logger.log(Level.ERROR, e.getMessage(), e);
         }
     }
 
-    /** */
+    /**
+     * Creates a parser for xml coming from the network, DTDs and external entities are rejected (XXE).
+     * a {@link DocumentBuilder} is not thread safe, use a new one for each parse.
+     */
+    static DocumentBuilder newDocumentBuilder() throws ParserConfigurationException {
+        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+        dbf.setNamespaceAware(true);
+        dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        dbf.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        dbf.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        dbf.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+        dbf.setFeature(javax.xml.XMLConstants.FEATURE_SECURE_PROCESSING, true);
+        dbf.setXIncludeAware(false);
+        dbf.setExpandEntityReferences(false);
+        return dbf.newDocumentBuilder();
+    }
+
+    /**  */
     public static Attr newAttribute(String name) {
         Document document = db.newDocument();
         return document.createAttribute(name);
     }
 
-    /** */
+    /**  */
     public static Element newElement(String name) {
         Document document = db.newDocument();
         return document.createElement(name);
@@ -269,7 +280,7 @@ abstract class Peercast {
 
     Stats stats = new Stats();
 
-    static int idleSleepTime = 10 * 1000;
+    static int idleSleepTime = 10;
 
     int bytesOutPerSec;
 
@@ -307,12 +318,12 @@ abstract class Peercast {
 
     // ---- common ----
 
-    /** */
+    /**  */
     static int byteToInt(byte[] ip) {
         return ByteBuffer.wrap(ip).asIntBuffer().get();
     }
 
-    /** */
+    /**  */
     static byte[] intToByte(int ip) {
         byte[] tmp = new byte[4];
         ByteBuffer.wrap(tmp).asIntBuffer().put(ip);
@@ -330,7 +341,7 @@ abstract class Peercast {
 
     //----
 
-    /** */
+    /**  */
     public static void main(String[] args) throws Exception {
 
         Peercast.iniFileName = "peercast.ini";
@@ -344,48 +355,52 @@ abstract class Peercast {
         instance = new Peercast() {
             @Override
             void notifyMessage(NotifyType type, String string) {
-                System.err.println("notify: " + type + ": " + string + " <- " + Debug.getCallerMethod(2));
+                logger.log(Level.DEBUG, "notify: " + type + ": " + string + " <- " + Debug.getCallerMethod(2));
             }
+
             @Override
             void delChannel(ChannelInfo info) {
-                System.err.println("delete: " + info.id + " <- " + Debug.getCallerMethod(2));
+                logger.log(Level.DEBUG, "delete: " + info.id + " <- " + Debug.getCallerMethod(2));
             }
+
             @Override
             void addChannel(ChannelInfo info) {
-                System.err.println("add: " + info.id + " <- " + Debug.getCallerMethod(2));
+                logger.log(Level.DEBUG, "add: " + info.id + " <- " + Debug.getCallerMethod(2));
             }
+
             @Override
             void channelStart(ChannelInfo info) {
-                System.err.println("start: " + info.id + " <- " + Debug.getCallerMethod(2));
+                logger.log(Level.DEBUG, "start: " + info.id + " <- " + Debug.getCallerMethod(2));
             }
+
             @Override
             void channelStop(ChannelInfo info) {
-                System.err.println("stop: " + info.id + " <- " + Debug.getCallerMethod(2));
+                logger.log(Level.DEBUG, "stop: " + info.id + " <- " + Debug.getCallerMethod(2));
             }
+
             @Override
             void channelUpdate(ChannelInfo info) {
 //new Exception("*** UPDATE ***").printStackTrace(System.err);
-                System.err.println("update: " + info.id + " <- " + Debug.getCallerMethod(2));
+                logger.log(Level.DEBUG, "update: " + info.id + " <- " + Debug.getCallerMethod(2));
             }
+
             @Override
             void updateSettings() {
-                System.err.println("setting: " + " <- " + Debug.getCallerMethod(2));
+                logger.log(Level.DEBUG, "setting: " + " <- " + Debug.getCallerMethod(2));
             }
         };
         instance.init();
 
         HttpUtil.setEncoding("MS932");
 
-        String urlString = "http://yp.peercast.org/";
+        String urlString = "https://p-at.net/";
         // tr[7] index 2 ~ ranking
         int number = (int) (Math.random() * 4 + 4);
-Debug.println("number: " + number);
+logger.log(Level.TRACE, "number: " + number);
         String xpath = String.format("/html/body/div/table/tr/td/div[2]/table/tr[%d]/td[2]/a/@href", number);
 
-        Scraper<URL, String> scraper = new SimpleURLScraper<>(new StringSimpleXPathScraper(xpath));
-        String url = scraper.scrape(new URL(urlString));
-//      String url = "peercast://pls/69AED3D9586F089E4D832A2450158498?tip=61.202.103.86:7144";
-Debug.println("url: " + url);
+        String url = XPathStream.source(new URL(urlString).openStream(), xpath).findFirst().orElse("peercast://pls/69AED3D9586F089E4D832A2450158498?tip=61.202.103.86:7144");
+logger.log(Level.TRACE, "url: " + url);
         if (url.startsWith("peercast://")) {
             if (url.startsWith("peercast://pls/")) {
                 url = url.substring(11 + 4);
@@ -406,5 +421,3 @@ Debug.println("url: " + url);
         instance.quit();
     }
 }
-
-/** */

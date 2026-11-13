@@ -19,38 +19,37 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 
+import org.peercast.core.common.GnuPacket.GnuFunction;
+import javax.xml.parsers.ParserConfigurationException;
+
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-
 import org.xml.sax.SAXException;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.peercast.core.common.GnuPacket.GnuFunction;
-
-import vavi.util.Singleton;
+import static java.lang.System.getLogger;
 
 
 /**
  * GnuStream.
  *
- * @version 4-apr-2002
  * @author giles
+ * @version 4-apr-2002
  */
 class GnuStream {
 
-    /** */
-    static Log log = LogFactory.getLog(ChannelManager.class);
+    private static final Logger logger = getLogger(GnuStream.class.getName());
 
     /** */
-    private ServentManager servMgr = Singleton.getInstance(ServentManager.class);
+    private final ServentManager servMgr = Peercast.serventManager;
 
     /** */
-    private static ChannelManager chanMgr = Singleton.getInstance(ChannelManager.class);
+    private static final ChannelManager chanMgr = Peercast.channelManager;
 
     /** */
     enum ResultType {
@@ -88,7 +87,7 @@ class GnuStream {
         GnuPacket ping = new GnuPacket(ttl);
         servMgr.addReplyID(ping.id);
         sendPacket(ping);
-log.debug(String.format("ping out %02x%02x%02x%02x", ping.id.id[0], ping.id.id[1], ping.id.id[2], ping.id.id[3]));
+        logger.log(Level.DEBUG, "ping out %02x%02x%02x%02x".formatted(ping.id.id[0], ping.id.id[1], ping.id.id[2], ping.id.id[3]));
     }
 
     /** */
@@ -146,11 +145,11 @@ log.debug(String.format("ping out %02x%02x%02x%02x", ping.id.id[0], ping.id.id[1
     }
 
     static GnuFunction[] functions = {
-        GnuPacket.PING,
-        GnuPacket.PONG,
-        GnuPacket.QUERY,
-        GnuPacket.HIT,
-        GnuPacket.PUSH
+            GnuPacket.PING,
+            GnuPacket.PONG,
+            GnuPacket.QUERY,
+            GnuPacket.HIT,
+            GnuPacket.PUSH
     };
 
     /** */
@@ -164,7 +163,7 @@ log.debug(String.format("ping out %02x%02x%02x%02x", ping.id.id[0], ping.id.id[1
     }
 
     /** */
-    ResultType processPacket(GnuPacket in, Servent servent, GnuID routeID) throws IOException {
+    static ResultType processPacket(GnuPacket in, Servent servent, GnuID routeID) throws IOException {
 
         ResultType ret = null;
 
@@ -176,10 +175,10 @@ log.debug(String.format("ping out %02x%02x%02x%02x", ping.id.id[0], ping.id.id[1
 
         int ver = in.getVersion();
 
-        if (in.func!= null) {
+        if (in.func != null) {
             ret = in.func.exec(in, servent, routeID);
         } else {
-            log.debug(String.format("packet: %d", in.func));
+            logger.log(Level.DEBUG, "packet: %d".formatted(in.func));
         }
 
         if ((in.ttl > 10) || (in.hops > 10) || (in.ttl == 0)) {
@@ -232,27 +231,27 @@ log.debug(String.format("ping out %02x%02x%02x%02x", ping.id.id[0], ping.id.id[1
                 xmlData = data.readUTF();
 
                 if (xmlData.startsWith("<?xml") && (xmlData.length() < GnuPacket.MAX_DATA)) {
-// log.debug("Hit XML: %s",xmlData);
+// logger.log(Level.DEBUG, "Hit XML: %s".formatted(xmlData));
 
                     ByteArrayInputStream xm = new ByteArrayInputStream(xmlData.getBytes());
                     Document xml = null;
                     try {
-                        xml = Peercast.db.parse(xm);
-                    } catch (SAXException e) {
-                        throw (RuntimeException) new IllegalStateException().initCause(e);
+                        xml = Peercast.newDocumentBuilder().parse(xm);
+                    } catch (SAXException | ParserConfigurationException e) {
+                        throw new IllegalStateException(e);
                     }
                     Element n = (Element) xml.getElementsByTagName("channel").item(0);
                     if (n != null) {
                         info.init(n);
                         String idStr = info.id.toString();
-                        log.debug(String.format("got hit %s %s", idStr, info.name));
+                        logger.log(Level.DEBUG, String.format("got hit %s %s", idStr, info.name));
 
                         ch.upTime = Integer.parseInt(n.getAttribute("uptime"));
 
                     } else
-                        log.debug("Missing Channel node");
+                        logger.log(Level.DEBUG, "Missing Channel node");
                 } else {
-                    log.debug("Missing XML data");
+                    logger.log(Level.DEBUG, "Missing XML data");
                     dataValid = false;
                 }
             }
@@ -298,9 +297,9 @@ log.debug(String.format("ping out %02x%02x%02x%02x", ping.id.id[0], ping.id.id[1
                 ByteArrayInputStream xm = new ByteArrayInputStream(privData, 0, privLen);
                 Document xml;
                 try {
-                    xml = Peercast.db.parse(xm);
-                } catch (SAXException e) {
-                    throw (RuntimeException) new IllegalStateException().initCause(e);
+                    xml = Peercast.newDocumentBuilder().parse(xm);
+                } catch (SAXException | ParserConfigurationException e) {
+                    throw new IllegalStateException(e);
                 }
                 Element sn = (Element) xml.getElementsByTagName("servent").item(0);
                 if (sn != null) {
@@ -337,5 +336,3 @@ log.debug(String.format("ping out %02x%02x%02x%02x", ping.id.id[0], ping.id.id[1
 
     int packetsIn, packetsOut;
 }
-
-/* */

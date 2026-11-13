@@ -21,36 +21,35 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.StringTokenizer;
-
-import javax.servlet.http.Cookie;
-
 import org.w3c.dom.Element;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import jakarta.servlet.http.Cookie;
 import org.peercast.core.common.ChannelInfo.ContentType;
 import org.peercast.core.common.ChannelInfo.Protocol;
-
-import vavi.util.Debug;
-import vavi.util.Singleton;
 import vavi.util.win32.WindowsProperties;
+
+import static java.lang.System.getLogger;
 
 
 /**
  * ServHost.
  *
- * @version 4-apr-2002
  * @author giles
+ * @version 4-apr-2002
  */
 class ServHost {
+
+    private static final Logger logger = getLogger(ServHost.class.getName());
 
     enum Type {
         /** */
@@ -63,7 +62,7 @@ class ServHost {
         SERVENT,
         /** */
         TRACKER
-    };
+    }
 
     ServHost() {
         address = null;
@@ -100,33 +99,31 @@ class ServFilter {
         NETWORK(0x04),
         /** */
         DIRECT(0x08);
-        int value;
+        final int value;
+
         Type(int value) {
             this.value = value;
         }
-    };
+    }
 
     ServFilter() {
         flags = 0;
-        mask = new byte[] { (byte) 255, (byte) 255, (byte) 255, (byte) 255 };
+        mask = new byte[] {(byte) 255, (byte) 255, (byte) 255, (byte) 255};
     }
 
     /** */
-    boolean writeVariable(OutputStream out, final String var) throws IOException {
+    boolean writeVariable(OutputStream out, String var) throws IOException {
         StringBuilder buf = new StringBuilder();
 
-        if (var.equals("network")) {
-            buf.append((flags & Type.NETWORK.value) != 0 ? "1" : "0");
-        } else if (var.equals("private")) {
-            buf.append((flags & Type.PRIVATE.value) != 0 ? "1" : "0");
-        } else if (var.equals("direct")) {
-            buf.append((flags & Type.DIRECT.value) != 0 ? "1" : "0");
-        } else if (var.equals("banned")) {
-            buf.append((flags & Type.BAN.value) != 0 ? "1" : "0");
-        } else if (var.equals("ip")) {
-            buf.append(getMask());
-        } else {
-            return false;
+        switch (var) {
+            case "network" -> buf.append((flags & Type.NETWORK.value) != 0 ? "1" : "0");
+            case "private" -> buf.append((flags & Type.PRIVATE.value) != 0 ? "1" : "0");
+            case "direct" -> buf.append((flags & Type.DIRECT.value) != 0 ? "1" : "0");
+            case "banned" -> buf.append((flags & Type.BAN.value) != 0 ? "1" : "0");
+            case "ip" -> buf.append(getMask());
+            default -> {
+                return false;
+            }
         }
 
         out.write(buf.toString().getBytes());
@@ -176,10 +173,9 @@ class ServFilter {
 /**
  * ServMgr keeps track of Servents.
  */
-public class ServentManager extends Singleton {
+public class ServentManager {
 
-    /** */
-    private static Log log = LogFactory.getLog(ServentManager.class);
+    private static final Logger logger = getLogger(ServentManager.class.getName());
 
     /** */
     static final int MIN_YP_RETRY = 20;
@@ -201,7 +197,8 @@ public class ServentManager extends Singleton {
         /** */
         TRACKINFO(0x0008);
         /** */
-        int value;
+        final int value;
+
         /** */
         NotifyType(int value) {
             this.value = value;
@@ -257,7 +254,7 @@ public class ServentManager extends Singleton {
     }
 
     /** */
-    static enum Allow {
+    enum Allow {
         /** */
         HTML(0x01),
         /** */
@@ -269,7 +266,8 @@ public class ServentManager extends Singleton {
         /** */
         ALL(0xff);
         /** */
-        int value;
+        final int value;
+
         /** */
         Allow(int value) {
             this.value = value;
@@ -286,7 +284,7 @@ public class ServentManager extends Singleton {
 
     /** */
     void connectBroadcaster() {
-        if (rootHost.length() != 0) {
+        if (!rootHost.isEmpty()) {
             if (numUsed(Servent.Type.COUT) == 0) {
                 Servent sv = allocServent();
                 if (sv != null) {
@@ -364,9 +362,9 @@ public class ServentManager extends Singleton {
 
         String hostName = address.getHostName();
         if (sh == null) {
-            log.debug(String.format("New host: %s - %s", hostName, type.toString()));
+            logger.log(Level.DEBUG, String.format("New host: %s - %s", hostName, type));
         } else {
-            log.debug(String.format("Old host: %s - %s", hostName, type.toString()));
+            logger.log(Level.DEBUG, String.format("Old host: %s - %s", hostName, type));
         }
 
         address = null; // make sure dead count is zero
@@ -577,8 +575,8 @@ public class ServentManager extends Singleton {
     void closeConnections(Servent.Type type) {
         for (Servent servent : servents) {
             if (servent.isConnected() &&
-                servent.type.equals(type)) {
-                    // sv.thread.isAlive() = false; // TODO check comment out
+                    servent.type.equals(type)) {
+                // sv.thread.isAlive() = false; // TODO check comment out
             }
         }
     }
@@ -590,9 +588,9 @@ public class ServentManager extends Singleton {
         long currentTime = System.currentTimeMillis();
         for (Servent servent : servents) {
             if (servent.isConnected() &&
-                servent.type.equals(type) &&
-                servent.isPrivate() == priv &&
-                (currentTime - servent.lastConnect) >= uptime) {
+                    servent.type.equals(type) &&
+                    servent.isPrivate() == priv &&
+                    (currentTime - servent.lastConnect) >= uptime) {
                 count++;
             }
         }
@@ -686,7 +684,7 @@ public class ServentManager extends Singleton {
 
     /** */
     void quit() {
-        log.debug("ServMgr is quitting..");
+        logger.log(Level.DEBUG, "ServMgr is quitting..");
 
         serverThread.interrupt();
 
@@ -694,9 +692,11 @@ public class ServentManager extends Singleton {
 
         for (Servent servent : servents) {
             try {
-                servent.server.stop();
+                if (servent.server != null) {
+                    servent.server.stop();
+                }
             } catch (IOException e) {
-                e.printStackTrace();
+                logger.log(Level.ERROR, e.getMessage(), e);
             }
         }
     }
@@ -709,8 +709,8 @@ public class ServentManager extends Singleton {
 
                 if (servent != source) {
                     if (servent.isConnected() &&
-                        servent.type == Servent.Type.PGNU &&
-                        !servent.seenIDs.contains(packet.id)) {
+                            servent.type == Servent.Type.PGNU &&
+                            !servent.seenIDs.contains(packet.id)) {
 
                         if (source != null) {
                             if (!source.networkID.equals(servent.networkID)) {
@@ -726,7 +726,7 @@ public class ServentManager extends Singleton {
             }
         }
 
-        log.debug(String.format("broadcast: %s (%d) to %d servents", packet.func, packet.ttl, count));
+        logger.log(Level.DEBUG, String.format("broadcast: %s (%d) to %d servents", packet.func, packet.ttl, count));
 
         return count;
     }
@@ -759,17 +759,17 @@ public class ServentManager extends Singleton {
 
         }
 
-        log.debug(String.format("route: %s (%d) to %d servents", pack.func, pack.ttl, count));
+        logger.log(Level.DEBUG, String.format("route: %s (%d) to %d servents", pack.func, pack.ttl, count));
         return count;
     }
 
     /** */
     boolean checkForceIP() throws IOException {
-        if (forceIP.length() != 0) {
+        if (!forceIP.isEmpty()) {
             int newIP = Peercast.byteToInt(InetAddress.getByName(forceIP).getAddress());
             if (Peercast.byteToInt(serverHost.getAddress().getAddress()) != newIP) {
                 serverHost = new InetSocketAddress(InetAddress.getByAddress(Peercast.intToByte(newIP)), serverHost.getPort());
-                log.debug(String.format("Server IP changed to %s", serverHost.getHostName()));
+                logger.log(Level.DEBUG, String.format("Server IP changed to %s", serverHost.getHostName()));
                 return true;
             }
         }
@@ -778,9 +778,9 @@ public class ServentManager extends Singleton {
 
     /** */
     void checkFirewall() throws IOException {
-        if (getFirewall().equals(FirewallState.UNKNOWN) && rootHost.length() != 0) {
+        if (getFirewall().equals(FirewallState.UNKNOWN) && !rootHost.isEmpty()) {
 
-            log.debug("Checking firewall..");
+            logger.log(Level.DEBUG, "Checking firewall..");
             InetSocketAddress host;
             host = new InetSocketAddress(rootHost, GnuPacket.DEFAULT_PORT);
 
@@ -807,7 +807,7 @@ public class ServentManager extends Singleton {
     /** */
     void setFirewall(FirewallState state) {
         if (firewalled != state) {
-            log.debug("Firewall is set to " + state);
+            logger.log(Level.DEBUG, "Firewall is set to " + state);
             firewalled = state;
         }
     }
@@ -826,7 +826,7 @@ public class ServentManager extends Singleton {
     }
 
     /** */
-    void writeServerSettings(WindowsProperties iniFile, int value, String section) {
+    static void writeServerSettings(WindowsProperties iniFile, int value, String section) {
         iniFile.setProperty(section + "." + "allowHTML", String.valueOf(value & ServentManager.Allow.HTML.value));
         iniFile.setProperty(section + "." + "allowBroadcast", String.valueOf(value & ServentManager.Allow.BROADCAST.value));
         iniFile.setProperty(section + "." + "allowNetwork", String.valueOf(value & ServentManager.Allow.ALLOW_NETWORK.value));
@@ -834,16 +834,16 @@ public class ServentManager extends Singleton {
     }
 
     /** */
-    void writeFilterSettings(WindowsProperties iniFile, ServFilter servFilter) {
+    static void writeFilterSettings(WindowsProperties iniFile, ServFilter servFilter) {
         iniFile.setProperty("Filter.ip", servFilter.getMask());
         iniFile.setProperty("Filter.private", String.valueOf(servFilter.flags & ServFilter.Type.PRIVATE.value));
-        iniFile.setProperty("Filter.ban",     String.valueOf(servFilter.flags & ServFilter.Type.BAN.value));
+        iniFile.setProperty("Filter.ban", String.valueOf(servFilter.flags & ServFilter.Type.BAN.value));
         iniFile.setProperty("Filter.network", String.valueOf(servFilter.flags & ServFilter.Type.NETWORK.value));
-        iniFile.setProperty("Filter.direct",  String.valueOf(servFilter.flags & ServFilter.Type.DIRECT.value));
+        iniFile.setProperty("Filter.direct", String.valueOf(servFilter.flags & ServFilter.Type.DIRECT.value));
     }
 
     /** */
-    void writeServHost(WindowsProperties iniFile, ServHost servHost) {
+    static void writeServHost(WindowsProperties iniFile, ServHost servHost) {
 
         iniFile.setProperty("Host.type", servHost.type.toString());
         iniFile.setProperty("Host.address", servHost.address.getHostName());
@@ -853,11 +853,11 @@ public class ServentManager extends Singleton {
     /** */
     void saveSettings(String fn) {
 
-        ChannelManager channelManager = Singleton.getInstance(ChannelManager.class);
+        ChannelManager channelManager = Peercast.channelManager;
 
         WindowsProperties iniFile = new WindowsProperties();
 
-        log.debug(String.format("Saving settings to:  %s", fn));
+        logger.log(Level.DEBUG, String.format("Saving settings to:  %s", fn));
 
         iniFile.setProperty("Server.serverPort", String.valueOf(serverHost.getPort()));
         iniFile.setProperty("Server.autoServe", String.valueOf(autoServe));
@@ -867,7 +867,7 @@ public class ServentManager extends Singleton {
         iniFile.setProperty("Server.maxRelays", String.valueOf(maxRelays));
         iniFile.setProperty("Server.maxDirect", String.valueOf(maxDirect));
         iniFile.setProperty("Server.maxRelaysPerChannel", String.valueOf(channelManager.maxRelaysPerChannel));
-        iniFile.setProperty("Server.firewallTimeout", String.valueOf(firewallTimeout));
+        iniFile.setProperty("Server.firewallTimeout", String.valueOf(firewallTimeout / 1000));
         iniFile.setProperty("Server.forceNormal", String.valueOf(forceNormal));
         iniFile.setProperty("Server.rootMsg", rootMsg);
         iniFile.setProperty("Server.authType", authType == AuthType.COOKIE ? "cookie" : "http-basic");
@@ -879,27 +879,27 @@ public class ServentManager extends Singleton {
 
         iniFile.setProperty("Server.networkID", networkID.toString());
 
-        iniFile.setProperty("Broadcast.broadcastMsgInterval", String.valueOf(channelManager.broadcastMsgInterval));
+        iniFile.setProperty("Broadcast.broadcastMsgInterval", String.valueOf(channelManager.broadcastMsgInterval / 1000));
         iniFile.setProperty("Broadcast.broadcastMsg", String.valueOf(channelManager.broadcastMessage));
         iniFile.setProperty("Broadcast.icyMetaInterval", String.valueOf(channelManager.icyMetaInterval));
 
         iniFile.setProperty("Broadcast.broadcastID", channelManager.broadcastID.toString());
-        iniFile.setProperty("Broadcast.hostUpdateInterval", String.valueOf(channelManager.hostUpdateInterval));
+        iniFile.setProperty("Broadcast.hostUpdateInterval", String.valueOf(channelManager.hostUpdateInterval / 1000));
         iniFile.setProperty("Broadcast.maxControlConnections", String.valueOf(maxControl));
         iniFile.setProperty("Broadcast.rootHost", rootHost);
 
-        iniFile.setProperty("Client.refreshHTML", String.valueOf(refreshHTML));
+        iniFile.setProperty("Client.refreshHTML", String.valueOf(refreshHTML / 1000));
         iniFile.setProperty("Client.relayBroadcast", String.valueOf(relayBroadcast));
         iniFile.setProperty("Client.minBroadcastTTL", String.valueOf(channelManager.minBroadcastTTL));
         iniFile.setProperty("Client.maxBroadcastTTL", String.valueOf(channelManager.maxBroadcastTTL));
         iniFile.setProperty("Client.pushTries", String.valueOf(channelManager.pushTries));
-        iniFile.setProperty("Client.pushTimeout", String.valueOf(channelManager.pushTimeout));
+        iniFile.setProperty("Client.pushTimeout", String.valueOf(channelManager.pushTimeout / 1000));
         iniFile.setProperty("Client.maxPushHops", String.valueOf(channelManager.maxPushHops));
         iniFile.setProperty("Client.autoQuery", String.valueOf(channelManager.autoQuery));
         iniFile.setProperty("Client.queryTTL", String.valueOf(queryTTL));
 
         iniFile.setProperty("Privacy.password", password);
-        iniFile.setProperty("Privacy.maxUptime", String.valueOf(channelManager.maxUptime));
+        iniFile.setProperty("Privacy.maxUptime", String.valueOf(channelManager.maxUptime / 1000));
 
         for (ServFilter filter : filters) {
             writeFilterSettings(iniFile, filter);
@@ -924,7 +924,7 @@ public class ServentManager extends Singleton {
             if (channel != null && channel.isActive() && channel.stayConnected) {
                 iniFile.setProperty("RelayChannel.name", channel.getName());
                 iniFile.setProperty("RelayChannel.genre", channel.info.genre);
-                if (channel.sourceURL.length() != 0) {
+                if (!channel.sourceURL.isEmpty()) {
                     iniFile.setProperty("RelayChannel.sourceURL", channel.sourceURL);
                 }
                 iniFile.setProperty("RelayChannel.sourceProtocol", channel.info.srcProtocol.name());
@@ -955,32 +955,32 @@ public class ServentManager extends Singleton {
         try {
             iniFile.store(new FileOutputStream(fn), Peercast.class.getName());
         } catch (IOException e) {
-            log.error("Unable to open ini file");
+            logger.log(Level.ERROR, "Unable to open ini file");
         }
     }
 
     /** */
-    int readServerSettings(WindowsProperties iniFile, int value, String section) {
-        value = iniFile.getProperty(section + "." + "allowHTML"     , "false").equals("true") ? value | ServentManager.Allow.HTML.value          : value & ~ServentManager.Allow.HTML.value;
-        value = iniFile.getProperty(section + "." + "allowDirect"   , "false").equals("true") ? value | ServentManager.Allow.ALLOW_DIRECT.value  : value & ~ServentManager.Allow.ALLOW_DIRECT.value;
-        value = iniFile.getProperty(section + "." + "allowNetwork"  , "false").equals("true") ? value | ServentManager.Allow.ALLOW_NETWORK.value : value & ~ServentManager.Allow.ALLOW_NETWORK.value;
-        value = iniFile.getProperty(section + "." + "allowBroadcast", "false").equals("true") ? value | ServentManager.Allow.BROADCAST.value     : value & ~ServentManager.Allow.BROADCAST.value;
+    static int readServerSettings(WindowsProperties iniFile, int value, String section) {
+        value = iniFile.getProperty(section + "." + "allowHTML", "false").equals("true") ? value | ServentManager.Allow.HTML.value : value & ~ServentManager.Allow.HTML.value;
+        value = iniFile.getProperty(section + "." + "allowDirect", "false").equals("true") ? value | ServentManager.Allow.ALLOW_DIRECT.value : value & ~ServentManager.Allow.ALLOW_DIRECT.value;
+        value = iniFile.getProperty(section + "." + "allowNetwork", "false").equals("true") ? value | ServentManager.Allow.ALLOW_NETWORK.value : value & ~ServentManager.Allow.ALLOW_NETWORK.value;
+        value = iniFile.getProperty(section + "." + "allowBroadcast", "false").equals("true") ? value | ServentManager.Allow.BROADCAST.value : value & ~ServentManager.Allow.BROADCAST.value;
         return value;
     }
 
     /** */
-    void readFilterSettings(WindowsProperties iniFile, ServFilter servFilter) {
+    static void readFilterSettings(WindowsProperties iniFile, ServFilter servFilter) {
 
         servFilter.setMask(iniFile.getProperty("Filter.ip", "255.255.255.255"));
         servFilter.flags = (servFilter.flags & ~ServFilter.Type.PRIVATE.value) | (iniFile.getProperty("Filter.private", "false").equals("true") ? ServFilter.Type.PRIVATE.value : 0);
-        servFilter.flags = (servFilter.flags & ~ServFilter.Type.BAN.value)     | (iniFile.getProperty("Filter.ban",     "false").equals("true") ? ServFilter.Type.BAN.value :     0);
-        servFilter.flags = (servFilter.flags & ~ServFilter.Type.NETWORK.value) | (iniFile.getProperty("Filter.allow",   "false").equals("true") ? ServFilter.Type.NETWORK.value : 0);
-        servFilter.flags = (servFilter.flags & ~ServFilter.Type.DIRECT.value)  | (iniFile.getProperty("Filter.direct",  "false").equals("true") ? ServFilter.Type.DIRECT.value :  0);
+        servFilter.flags = (servFilter.flags & ~ServFilter.Type.BAN.value) | (iniFile.getProperty("Filter.ban", "false").equals("true") ? ServFilter.Type.BAN.value : 0);
+        servFilter.flags = (servFilter.flags & ~ServFilter.Type.NETWORK.value) | (iniFile.getProperty("Filter.allow", "false").equals("true") ? ServFilter.Type.NETWORK.value : 0);
+        servFilter.flags = (servFilter.flags & ~ServFilter.Type.DIRECT.value) | (iniFile.getProperty("Filter.direct", "false").equals("true") ? ServFilter.Type.DIRECT.value : 0);
     }
 
     /** */
     void loadSettings(String fileName) {
-        ChannelManager channelManager = Singleton.getInstance(ChannelManager.class);
+        ChannelManager channelManager = Peercast.channelManager;
 
         WindowsProperties iniFile = new WindowsProperties();
 
@@ -1017,11 +1017,11 @@ public class ServentManager extends Singleton {
 //          channelManager.maxRelaysPerChannel = Integer.parseInt(iniFile.getProperty("Server.maxStreamsPerChannel", "0")); // depreciated
             channelManager.maxRelaysPerChannel = Integer.parseInt(iniFile.getProperty("Server.maxRelaysPerChannel", "0"));
 
-            firewallTimeout = Integer.parseInt(iniFile.getProperty("Server.firewallTimeout", "0")) * 1000;
+            firewallTimeout = Long.parseLong(iniFile.getProperty("Server.firewallTimeout", "0")) * 1000;
             forceNormal = iniFile.getProperty("Server.forceNormal", "false").equals("true");
-            channelManager.broadcastMsgInterval = Integer.parseInt(iniFile.getProperty("Broadcast.broadcastMsgInterval", "10")) * 1000;
+            channelManager.broadcastMsgInterval = Long.parseLong(iniFile.getProperty("Broadcast.broadcastMsgInterval", "10")) * 1000;
             channelManager.broadcastMessage = iniFile.getProperty("Broadcast.broadcastMsg", "");
-            channelManager.hostUpdateInterval = Integer.parseInt(iniFile.getProperty("Broadcast.hostUpdateInterval", "90")) * 1000;
+            channelManager.hostUpdateInterval = Long.parseLong(iniFile.getProperty("Broadcast.hostUpdateInterval", "90")) * 1000;
             channelManager.icyMetaInterval = Integer.parseInt(iniFile.getProperty("Broadcast.icyMetaInterval", "8192"));
             maxServIn = Integer.parseInt(iniFile.getProperty("Server.maxServIn", "50"));
 
@@ -1033,12 +1033,12 @@ public class ServentManager extends Singleton {
 
             // [Privacy] settings
             password = iniFile.getProperty("Privacy.password", "");
-            channelManager.maxUptime = Integer.parseInt(iniFile.getProperty("Privacy.maxUptime", "0")) * 1000;
+            channelManager.maxUptime = Long.parseLong(iniFile.getProperty("Privacy.maxUptime", "0")) * 1000;
 
             // [Client] settings
             rootHost = iniFile.getProperty("Broadcast.rootHost", "yp.peercast.org");
             channelManager.deadHitAge = Integer.parseInt(iniFile.getProperty("Client.deadHitAge", "0"));
-            tryoutDelay = Integer.parseInt(iniFile.getProperty("Client.tryoutDelay", "0")) * 1000;
+            tryoutDelay = Long.parseLong(iniFile.getProperty("Client.tryoutDelay", "0")) * 1000;
             refreshHTML = Integer.parseInt(iniFile.getProperty("Client.refreshHTML", "5")) * 1000;
             relayBroadcast = Integer.parseInt(iniFile.getProperty("Client.relayBroadcast", "30"));
             if (relayBroadcast < 30) {
@@ -1047,7 +1047,7 @@ public class ServentManager extends Singleton {
 
             channelManager.minBroadcastTTL = Integer.parseInt(iniFile.getProperty("Client.minBroadcastTTL", "1"));
             channelManager.maxBroadcastTTL = Integer.parseInt(iniFile.getProperty("Client.maxBroadcastTTL", "7"));
-            channelManager.pushTimeout = Integer.parseInt(iniFile.getProperty("Client.pushTimeout", "60")) * 1000;
+            channelManager.pushTimeout = Long.parseLong(iniFile.getProperty("Client.pushTimeout", "60")) * 1000;
             channelManager.pushTries = Integer.parseInt(iniFile.getProperty("Client.pushTries", "5"));
             channelManager.maxPushHops = Integer.parseInt(iniFile.getProperty("Client.maxPushHops", "60"));
             channelManager.autoQuery = Integer.parseInt(iniFile.getProperty("Client.autoQuery", "0"));
@@ -1074,9 +1074,9 @@ public class ServentManager extends Singleton {
 
             // "[Notify]"
             notifyMask = NotifyType.UPGRADE.value;
-            notifyMask |= iniFile.getProperty("Notify.PeerCast",     "true").equals("true") ? NotifyType.PEERCAST.value     : 0;
+            notifyMask |= iniFile.getProperty("Notify.PeerCast", "true").equals("true") ? NotifyType.PEERCAST.value : 0;
             notifyMask |= iniFile.getProperty("Notify.Broadcasters", "true").equals("true") ? NotifyType.BROADCASTERS.value : 0;
-            notifyMask |= iniFile.getProperty("Notify.TrackInfo",    "true").equals("true") ? NotifyType.TRACKINFO.value    : 0;
+            notifyMask |= iniFile.getProperty("Notify.TrackInfo", "true").equals("true") ? NotifyType.TRACKINFO.value : 0;
 
             // "[RelayChannel]"
             ChannelInfo info = new ChannelInfo();
@@ -1102,7 +1102,7 @@ public class ServentManager extends Singleton {
             if (info.name != null) {
                 channelManager.addHit(hit);
 
-                if (sourceURL == null || sourceURL.length() == 0) {
+                if (sourceURL == null || sourceURL.isEmpty()) {
                     channelManager.createRelay(info, stayConnected);
                 } else {
                     Channel channel = channelManager.createChannel(info, null);
@@ -1118,10 +1118,10 @@ public class ServentManager extends Singleton {
             addHost(h, type, time);
 
         } catch (IOException e) {
-Debug.printStackTrace(e);
+            logger.log(Level.TRACE, e);
         }
 
-        if (filters.size() == 0) {
+        if (filters.isEmpty()) {
             setFilterDefaults();
         }
     }
@@ -1161,10 +1161,10 @@ Debug.printStackTrace(e);
     /**
      * @param url sid?foo=var...
      */
-    boolean getChannel(String url, ChannelInfo info, boolean relay) {
-        ChannelManager channelManager = Singleton.getInstance(ChannelManager.class);
+    Channel getChannel(String url, ChannelInfo info, boolean relay) {
+        ChannelManager channelManager = Peercast.channelManager;
         // remove file extension (only added for winamp)
-Debug.println("url: " + url);
+        logger.log(Level.TRACE, "url: " + url);
         procConnectArgs(url, info);
 
         Channel channel = channelManager.findChannelByNameID(info);
@@ -1175,35 +1175,32 @@ Debug.println("url: " + url);
                     channel.info.lastPlayStart = 0; // force reconnect
                     channel.info.lastPlayEnd = 0;
                 } else {
-                    return false;
+                    return null;
                 }
             }
 
-            info = channel.info; // get updated channel info
-
-            return true;
+            return channel;
         } else {
             if (relay) {
                 channel = channelManager.findAndRelay(info);
                 if (channel != null) {
-                    info = channel.info; // get updated channel info
-                    return true;
+                    return channel;
                 }
             }
         }
 
-        return false;
+        return null;
     }
 
     /** */
-    int findChannel(ChannelInfo info) {
+    static int findChannel(ChannelInfo info) {
         return 0;
     }
 
     /**
      * add outgoing network connection from string (ip:port format)
      */
-    boolean addOutgoing(InetSocketAddress address, GnuID netid, boolean pri) {
+    static boolean addOutgoing(InetSocketAddress address, GnuID netid, boolean pri) {
         return false;
     }
 
@@ -1222,12 +1219,12 @@ Debug.println("url: " + url);
     }
 
     /**
-     * url ����p�����[�^�����o���Đݒ肵�܂��B
+     * The parameters are extracted from the URL and set.
      * TODO move to ChanInfo
      */
     void procConnectArgs(String url, ChannelInfo info) {
 
-        ChannelManager channelManager = Singleton.getInstance(ChannelManager.class);
+        ChannelManager channelManager = Peercast.channelManager;
 
         info.initNameID(url);
 
@@ -1247,14 +1244,10 @@ Debug.println("url: " + url);
             if (equalIndex < 0) {
                 name = pair;
             } else {
-                try {
-                    name = URLDecoder.decode(pair.substring(0, equalIndex), "UTF-8");
-                    value = URLDecoder.decode(pair.substring(equalIndex + 1), "UTF-8");
-                } catch (UnsupportedEncodingException e) {
-                    assert false;
-                }
+                name = URLDecoder.decode(pair.substring(0, equalIndex), StandardCharsets.UTF_8);
+                value = URLDecoder.decode(pair.substring(equalIndex + 1), StandardCharsets.UTF_8);
             }
-log.debug(String.format("cmd: %s, arg: %s", name, value));
+            logger.log(Level.DEBUG, String.format("cmd: %s, arg: %s", name, value));
 
             InetSocketAddress address = null;
             int colonIndex = value.indexOf(':');
@@ -1265,43 +1258,47 @@ log.debug(String.format("cmd: %s, arg: %s", name, value));
             } else {
                 address = new InetSocketAddress(value, GnuPacket.DEFAULT_PORT);
             }
-//Debug.println("address: " + address);
+//logger.log(Level.TRACE, "address: " + address);
 
-            if (name.equals("sip")) {
-                // sip - add network connection to client with channel
+            switch (name) {
+                case "sip" -> {
+                    // sip - add network connection to client with channel
 
-                if (addOutgoing(address, networkID, true)) { // TODO networkID belongs to ServentManager
-                    log.debug(String.format("Added connection: %s", address));
+                    if (addOutgoing(address, networkID, true)) { // TODO networkID belongs to ServentManager
+                        logger.log(Level.DEBUG, String.format("Added connection: %s", address));
+                    }
                 }
+                case "pip" -> {
+                    // pip - add private network connection to client with channel
 
-            } else if (name.equals("pip")) {
-                // pip - add private network connection to client with channel
-
-                if (addOutgoing(address, info.id, true)) { // TODO addOutgoing() belongs to ServentManager
-                    log.debug(String.format("Added private connection: %s", address));
+                    if (addOutgoing(address, info.id, true)) { // TODO addOutgoing() belongs to ServentManager
+                        logger.log(Level.DEBUG, String.format("Added private connection: %s", address));
+                    }
                 }
-            } else if (name.equals("ip")) {
-                // ip - add hit
+                case "ip" -> {
+                    // ip - add hit
 
-                ChannelHit hit = new ChannelHit();
-                hit.setAddress(address);
-                hit.remoteAddresses[0] = address;
-                hit.remoteAddresses[1] = null;
-                hit.channelID = info.id;
-                hit.receiver = true;
+                    ChannelHit hit = new ChannelHit();
+                    hit.setAddress(address);
+                    hit.remoteAddresses[0] = address;
+                    hit.remoteAddresses[1] = null;
+                    hit.channelID = info.id;
+                    hit.receiver = true;
 
-                channelManager.addHit(hit);
-            } else if (name.equals("tip")) {
-                // tip - add tracker hit
-Debug.println("tip: " + address);
-                channelManager.addHit(address, info.id, true);
+                    channelManager.addHit(hit);
+                }
+                case "tip" -> {
+                    // tip - add tracker hit
+                    logger.log(Level.TRACE, "tip: " + address);
+                    channelManager.addHit(address, info.id, true);
+                }
             }
         }
     }
 
     /** start point */
     boolean start() throws IOException {
-        log.debug("SessionID: " + sessionID);
+        logger.log(Level.DEBUG, "SessionID: " + sessionID);
 
         checkForceIP();
 
@@ -1315,9 +1312,7 @@ Debug.println("tip: " + address);
     }
 
     /** */
-    Runnable clientProc = new Runnable() {
-        public void run() {
-        }
+    Runnable clientProc = () -> {
     };
 
     /** */
@@ -1361,7 +1356,7 @@ Debug.println("tip: " + address);
 
     /** */
     void writeRootAtoms(AtomOutputStream atomOut, boolean getUpdate) throws IOException {
-        ChannelManager chanMgr = Singleton.getInstance(ChannelManager.class);
+        ChannelManager chanMgr = Peercast.channelManager;
 
         atomOut.writeParent(PCPStream.PCP_ROOT, 5 + (getUpdate ? 1 : 0));
         atomOut.writeInt(PCPStream.PCP_ROOT_UPDINT, (int) (chanMgr.hostUpdateInterval / 1000));
@@ -1415,9 +1410,10 @@ Debug.println("tip: " + address);
 
     /** */
     Runnable idleProc = new Runnable() {
+        @Override
         public void run() {
 
-            ChannelManager channelManager = Singleton.getInstance(ChannelManager.class);
+            ChannelManager channelManager = Peercast.channelManager;
 
             int lastPasvFind = 0;
             int lastBroadcast = 0;
@@ -1442,7 +1438,7 @@ Debug.println("tip: " + address);
 
                     long currentTime = System.currentTimeMillis();
 
-                    if (forceIP.length() != 0) {
+                    if (!forceIP.isEmpty()) {
                         if ((currentTime - lastForceIPCheck) > 60) {
                             if (checkForceIP()) {
                                 GnuID noID = new GnuID();
@@ -1482,9 +1478,12 @@ Debug.println("tip: " + address);
                         }
                     }
 
-                    try { Thread.sleep(500); } catch (InterruptedException e) {}
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException ignored) {
+                    }
                 } catch (IOException e) {
-log.error(e);
+                    logger.log(Level.ERROR, e.getMessage(), e);
                 }
             }
         }
@@ -1492,6 +1491,7 @@ log.error(e);
 
     /** */
     Runnable serverProc = new Runnable() {
+        @Override
         public void run() {
 
             Servent serv = allocServent();
@@ -1506,7 +1506,7 @@ log.error(e);
                         serv.abort();
                         serv2.abort(); // force close
                     } catch (IOException e) {
-log.error("restartServer", e);
+                        logger.log(Level.ERROR, "restartServer", e.getMessage(), e);
                     } // force close
                     quit();
 
@@ -1518,7 +1518,7 @@ log.error("restartServer", e);
                     serv2.allow = allowServer2;
 
                     if (serv.server == null || serv2.server == null) {
-log.debug("Starting servers");
+                        logger.log(Level.DEBUG, "Starting servers");
                         // forceLookup = true;
 
                         // if (serverHost.ip != 0)
@@ -1544,7 +1544,7 @@ log.debug("Starting servers");
                         serv.abort();
                         serv2.abort(); // force close
                     } catch (IOException e) {
-log.error(e);
+                        logger.log(Level.ERROR, e);
                     } // force close
 
                     // cancel incoming connectuions
@@ -1573,7 +1573,7 @@ log.error(e);
     }
 
     /** */
-    Element createServentXML() {
+    static Element createServentXML() {
         Element e = Peercast.newElement("servent");
         e.setAttribute("agent", GnuPacket.PCX_AGENT);
         return e;
@@ -1606,7 +1606,7 @@ log.error(e);
         replyIDs.add(id);
     }
 
-    boolean needHosts() {
+    static boolean needHosts() {
         return false;
     }
 
@@ -1614,7 +1614,7 @@ log.error(e);
         return numConnected(Servent.Type.PGNU, false, 60) < minGnuIncoming;
     }
 
-    boolean tryFull() {
+    static boolean tryFull() {
         return false;
     }
 
@@ -1626,11 +1626,11 @@ log.error(e);
         return numConnected(Servent.Type.PGNU, false, 0) >= maxGnuIncoming;
     }
 
-    boolean outUsedFull() {
+    static boolean outUsedFull() {
         return false;
     }
 
-    boolean outOver() {
+    static boolean outOver() {
         return false;
     }
 
@@ -1638,7 +1638,7 @@ log.error(e);
         return numConnected(Servent.Type.CIN, false, 0) >= maxControl;
     }
 
-    boolean outFull() {
+    static boolean outFull() {
         return false;
     }
 
@@ -1655,7 +1655,7 @@ log.error(e);
     }
 
     /** */
-    boolean writeVariable(OutputStream out, final String var) throws IOException {
+    boolean writeVariable(OutputStream out, String var) throws IOException {
         String buf = null;
 
         if (var.equals("version")) {
@@ -1729,51 +1729,44 @@ log.error(e);
         } else if (var.equals("serverPort2")) {
             buf = String.format("%d", serverHost.getPort() + 1);
         } else if (var.startsWith("allow.")) {
-            if (var.equals("allow.HTML1")) {
-                buf = (allowServer1 & ServentManager.Allow.HTML.value) != 0 ? "1" : "0";
-            } else if (var.equals("allow.HTML2")) {
-                buf = (allowServer2 & ServentManager.Allow.HTML.value) != 0 ? "1" : "0";
-            } else if (var.equals("allow.broadcasting1")) {
-                buf = (allowServer1 & ServentManager.Allow.BROADCAST.value) != 0 ? "1" : "0";
-            } else if (var.equals("allow.broadcasting2")) {
-                buf = (allowServer2 & ServentManager.Allow.BROADCAST.value) != 0 ? "1" : "0";
-            } else if (var.equals("allow.network1")) {
-                buf = (allowServer1 & ServentManager.Allow.ALLOW_NETWORK.value) != 0 ? "1" : "0";
-            } else if (var.equals("allow.direct1")) {
-                buf = (allowServer1 & ServentManager.Allow.ALLOW_DIRECT.value) != 0 ? "1" : "0";
-            }
+            buf = switch (var) {
+                case "allow.HTML1" -> (allowServer1 & Allow.HTML.value) != 0 ? "1" : "0";
+                case "allow.HTML2" -> (allowServer2 & Allow.HTML.value) != 0 ? "1" : "0";
+                case "allow.broadcasting1" -> (allowServer1 & Allow.BROADCAST.value) != 0 ? "1" : "0";
+                case "allow.broadcasting2" -> (allowServer2 & Allow.BROADCAST.value) != 0 ? "1" : "0";
+                case "allow.network1" -> (allowServer1 & Allow.ALLOW_NETWORK.value) != 0 ? "1" : "0";
+                case "allow.direct1" -> (allowServer1 & Allow.ALLOW_DIRECT.value) != 0 ? "1" : "0";
+                default -> buf;
+            };
         } else if (var.startsWith("auth.")) {
-            if (var.equals("auth.useCookies")) {
-                buf = authType == AuthType.COOKIE ? "1" : "0";
-            } else if (var.equals("auth.useHTTP")) {
-                buf = authType == AuthType.HTTPBASIC ? "1" : "0";
-            } else if (var.equals("auth.useSessionCookies")) {
-                buf = neverExpire == false ? "1" : "0";
-            }
+            buf = switch (var) {
+                case "auth.useCookies" -> authType == AuthType.COOKIE ? "1" : "0";
+                case "auth.useHTTP" -> authType == AuthType.HTTPBASIC ? "1" : "0";
+                case "auth.useSessionCookies" -> neverExpire == false ? "1" : "0";
+                default -> buf;
+            };
         } else if (var.startsWith("log.")) {
-            if (var.equals("log.debug")) {
-                buf = (showLog & (1 << 1)) != 0 ? "1" : "0";
-            } else if (var.equals("log.errors")) {
-                buf= (showLog & (1 << 2)) != 0 ? "1" : "0";
-            } else if (var.equals("log.gnet")) {
-                buf = (showLog & (1 << 3)) != 0 ? "1" : "0";
-            } else if (var.equals("log.channel")) {
-                buf = (showLog & (1 << 4)) != 0 ? "1" : "0";
-            } else {
-                return false;
+            switch (var) {
+                case "log.debug" -> buf = (showLog & (1 << 1)) != 0 ? "1" : "0";
+                case "log.errors" -> buf = (showLog & (1 << 2)) != 0 ? "1" : "0";
+                case "log.gnet" -> buf = (showLog & (1 << 3)) != 0 ? "1" : "0";
+                case "log.channel" -> buf = (showLog & (1 << 4)) != 0 ? "1" : "0";
+                default -> {
+                    return false;
+                }
             }
         } else if (var.equals("test")) {
             DataOutputStream dos = new DataOutputStream(out);
-            dos.writeUTF("\u304b");
-            dos.writeUTF("\u304d");
-            dos.writeUTF("\u304f");
-            dos.writeUTF("\u3051");
-            dos.writeUTF("\u3053");
+            dos.writeUTF("か");
+            dos.writeUTF("き");
+            dos.writeUTF("く");
+            dos.writeUTF("け");
+            dos.writeUTF("こ");
 
-            dos.writeUTF("\u0041");
-            dos.writeUTF("\u0042");
-            dos.writeUTF("\u0043");
-            dos.writeUTF("\u0044");
+            dos.writeUTF("A");
+            dos.writeUTF("B");
+            dos.writeUTF("C");
+            dos.writeUTF("D");
 
             dos.writeByte('a');
             dos.writeByte('b');
@@ -1901,5 +1894,3 @@ log.error(e);
 
     private FirewallState firewalled = FirewallState.UNKNOWN;
 }
-
-/* */

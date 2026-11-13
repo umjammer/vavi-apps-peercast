@@ -20,6 +20,8 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -27,14 +29,14 @@ import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
-import vavi.util.Debug;
-import vavi.util.Singleton;
 import vavi.util.StringUtil;
+
+import static java.lang.System.getLogger;
 
 
 /** */
 class BroadcastState {
+
     BroadcastState() {
         chanID = new GnuID();
         chanID.clear();
@@ -62,14 +64,16 @@ class BroadcastState {
 }
 
 /**
- *
- * @version 1-mar-2004
  * @author giles
+ * @version 1-mar-2004
  */
 class PCPStream extends ChannelStream {
-    private ServentManager serventManager = Singleton.getInstance(ServentManager.class);
 
-    private ChannelManager chanelManager = Singleton.getInstance(ChannelManager.class);
+    private static final Logger logger = getLogger(PCPStream.class.getName());
+
+    private final ServentManager serventManager = Peercast.serventManager;
+
+    private final ChannelManager chanelManager = Peercast.channelManager;
 
     static final int PCP_CLIENT_VERSION = 1211;
 
@@ -310,12 +314,8 @@ class PCPStream extends ChannelStream {
     }
 
     void kill() {
-        try {
-            inData.wait();
-            outData.wait();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        inData.init();
+        outData.init();
     }
 
     /** */
@@ -335,7 +335,7 @@ class PCPStream extends ChannelStream {
 
     /** */
     static void readVersion(InputStream in) throws IOException {
-Debug.println("available: " + in.available());
+        logger.log(Level.TRACE, "available: " + in.available());
         DataInputStream dis = new DataInputStream(in);
         int len = dis.readInt();
 
@@ -345,22 +345,22 @@ Debug.println("available: " + in.available());
 
         int ver = dis.readInt();
 
-        log.debug(String.format("PCP ver: %d", ver));
+        logger.log(Level.DEBUG, String.format("PCP ver: %d", ver));
     }
 
-    /** */
+    @Override
     int readHeader(InputStream is, Channel channel) throws IOException {
-        // AtomStream atom(is);
-
-        // if (is.readInt() != PCP_CONNECT) {
-        //     throw IOException("Not PCP");
-        // }
-
-        // readVersion(is);
+//         AtomStream atom(is);
+//
+//         if (is.readInt() != PCP_CONNECT) {
+//             throw IOException("Not PCP");
+//         }
+//
+//         readVersion(is);
         return 0;
     }
 
-    /** */
+    @Override
     boolean sendPacket(ChannelPacket pack, GnuID destID) {
         if (destID.isSet()) {
             if (!destID.equals(remoteID)) {
@@ -374,6 +374,7 @@ Debug.println("available: " + in.available());
     }
 
     /** send outward packets */
+    @Override
     void flush(OutputStream in) throws IOException {
         while (outData.numPending()) {
             ChannelPacket pack = outData.readPacket();
@@ -381,7 +382,7 @@ Debug.println("available: " + in.available());
         }
     }
 
-    /** */
+    @Override
     int readPacket(InputStream is, Channel channel) throws IOException {
         BroadcastState bcs = new BroadcastState();
         return readPacket(is, channel.sock.getOutputStream(), bcs);
@@ -444,16 +445,16 @@ Debug.println("available: " + in.available());
             error = 0;
 
         } catch (IOException e) {
-if (error != 1003) { // PCP EOS
- Debug.printStackTrace(e);
-}
-            log.error(String.format("PCP readPacket: %s (%d)", e.getMessage(), error));
+            if (error != 1003) { // PCP EOS
+                logger.log(Level.TRACE, e);
+            }
+            logger.log(Level.ERROR, String.format("PCP readPacket: %s (%d)", e.getMessage(), error));
         }
 
         return error;
     }
 
-    /** */
+    @Override
     int readEnd(InputStream is, Channel channel) {
         return 0;
     }
@@ -478,7 +479,7 @@ if (error != 1003) { // PCP EOS
             } else if (id.equals(PCP_PUSH_CHANID)) {
                 atom.readBytes(chanID.id, 16);
             } else {
-                log.debug(String.format("PCP skip: %s,%d,%d", id.toString(), c, d));
+                logger.log(Level.DEBUG, String.format("PCP skip: %s,%d,%d", id, c, d));
                 atom.skip(c, d);
             }
         }
@@ -500,7 +501,7 @@ if (error != 1003) { // PCP EOS
             }
 
             if (servent != null) {
-                log.debug(String.format("GIVing to %s", ipstr));
+                logger.log(Level.DEBUG, String.format("GIVing to %s", ipstr));
                 servent.initGIV(host, chanID);
             }
         }
@@ -517,7 +518,7 @@ if (error != 1003) { // PCP EOS
                 int si = atomIn.readInt();
 
                 chanelManager.setUpdateInterval(si);
-                log.debug(String.format("PCP got new host update interval: %ds", si));
+                logger.log(Level.DEBUG, String.format("PCP got new host update interval: %ds", si));
             } else if (id.equals(PCP_ROOT_URL)) {
                 url = "http://www.peercast.org/";
                 String loc = null;
@@ -530,7 +531,7 @@ if (error != 1003) { // PCP EOS
                     serventManager.downloadURL = url;
                     Peercast.getInstance().notifyMessage(ServentManager.NotifyType.UPGRADE, "There is a new version available, please click here to upgrade your client.");
                 }
-                log.debug(String.format("PCP got version check: %d / %d", newVer, PCP_CLIENT_VERSION));
+                logger.log(Level.DEBUG, String.format("PCP got version check: %d / %d", newVer, PCP_CLIENT_VERSION));
 
             } else if (id.equals(PCP_ROOT_NEXT)) {
                 int time = atomIn.readInt();
@@ -538,7 +539,7 @@ if (error != 1003) { // PCP EOS
                 if (time != 0) {
                     long ctime = System.currentTimeMillis();
                     nextRootPacket = ctime + time;
-                    log.debug(String.format("PCP expecting next root packet in %ds", time));
+                    logger.log(Level.DEBUG, String.format("PCP expecting next root packet in %ds", time));
                 } else {
                     nextRootPacket = 0;
                 }
@@ -552,18 +553,18 @@ if (error != 1003) { // PCP EOS
                 String newMsg = atomIn.readString(atomIn.dataLength, atomIn.dataLength);
                 if (!newMsg.equals(serventManager.rootMsg)) {
                     serventManager.rootMsg = newMsg;
-                    log.debug(String.format("PCP got new root mesg: %s", serventManager.rootMsg));
+                    logger.log(Level.DEBUG, String.format("PCP got new root mesg: %s", serventManager.rootMsg));
                     Peercast.getInstance().notifyMessage(ServentManager.NotifyType.PEERCAST, serventManager.rootMsg);
                 }
             } else {
-                log.debug(String.format("PCP skip: %s,%d,%d", id.toString(), atomIn.childCount, atomIn.dataLength));
+                logger.log(Level.DEBUG, String.format("PCP skip: %s,%d,%d", id, atomIn.childCount, atomIn.dataLength));
                 atomIn.skip(atomIn.childCount, atomIn.dataLength);
             }
         }
     }
 
     /** */
-    private void readPktAtoms(Channel ch, AtomInputStream atomIn, int childCount, BroadcastState bcs) throws IOException {
+    private static void readPktAtoms(Channel ch, AtomInputStream atomIn, int childCount, BroadcastState bcs) throws IOException {
         ChannelPacket pack = new ChannelPacket();
         ID4 type;
 
@@ -584,12 +585,12 @@ if (error != 1003) { // PCP EOS
                 pack.pos = atomIn.readInt();
 
             } else if (id.equals(PCP_CHAN_PKT_DATA)) {
-if (pack.data == null) { // TODO check initialize
- pack.data = new byte[atomIn.dataLength];
-}
+                if (pack.data == null) { // TODO check initialize
+                    pack.data = new byte[atomIn.dataLength];
+                }
                 atomIn.readBytes(pack.data, pack.data.length);
             } else {
-                log.debug(String.format("PCP skip: %s,%d,%d", id.toString(), atomIn.childCount, atomIn.dataLength));
+                logger.log(Level.DEBUG, String.format("PCP skip: %s,%d,%d", id, atomIn.childCount, atomIn.dataLength));
                 atomIn.skip(atomIn.childCount, atomIn.dataLength);
             }
         }
@@ -598,15 +599,15 @@ if (pack.data == null) { // TODO check initialize
 
             int diff = pack.pos - ch.streamPos;
             if (diff != 0) {
-                log.debug(String.format("PCP skipping %s%d (%d -> %d)", (diff > 0) ? "+" : "", diff, ch.streamPos, pack.pos));
+                logger.log(Level.DEBUG, String.format("PCP skipping %s%d (%d -> %d)", (diff > 0) ? "+" : "", diff, ch.streamPos, pack.pos));
             }
 
             if (pack.type.equals(ChannelPacket.Type.HEAD)) {
-                log.debug(String.format("New head packet at %d", pack.pos));
+                logger.log(Level.DEBUG, String.format("New head packet at %d", pack.pos));
 
                 // check for stream restart
                 if (pack.pos == 0) {
-                    log.debug("PCP resetting stream");
+                    logger.log(Level.DEBUG, "PCP resetting stream");
                     ch.streamIndex++;
                     ch.rawData.init();
                 }
@@ -684,7 +685,7 @@ if (pack.data == null) { // TODO check initialize
             } else if (id.equals(PCP_HOST_TRACKER)) { // depreciated
                 hit.tracker = atomIn.readByte() != 0;
             } else {
-                log.debug(String.format("PCP skip: %s,%d,%d", id.toString(), atomIn.childCount, atomIn.dataLength));
+                logger.log(Level.DEBUG, String.format("PCP skip: %s,%d,%d", id, atomIn.childCount, atomIn.dataLength));
                 atomIn.skip(atomIn.childCount, atomIn.dataLength);
             }
         }
@@ -712,7 +713,7 @@ if (pack.data == null) { // TODO check initialize
 
     /** */
     private void readChanAtoms(AtomInputStream atomIn, int childCount, BroadcastState bcs) throws IOException {
-        ChannelInfo newInfo = new ChannelInfo(); // TODO ���ʂȋC��...
+        ChannelInfo newInfo = new ChannelInfo(); // TODO It feels like a waste of time...
 
         Channel ch = chanelManager.findChannelByID(bcs.chanID);
         ChannelHitList chl = chanelManager.findHitListByID(bcs.chanID);
@@ -722,9 +723,9 @@ if (pack.data == null) { // TODO check initialize
         } else if (chl != null) {
             newInfo = chl.info;
         }
-if (newInfo == null) { // TODO @@@ newInfo is null, cause bcs.chanId is cleared
- new Exception("newInfo: " + newInfo).printStackTrace(System.err);
-}
+        if (newInfo == null) { // TODO @@@ newInfo is null, cause bcs.chanId is cleared
+            new Exception("newInfo: " + newInfo).printStackTrace(System.err);
+        }
         for (int i = 0; i < childCount; i++) {
 
             ID4 id = atomIn.read();
@@ -746,7 +747,7 @@ if (newInfo == null) { // TODO @@@ newInfo is null, cause bcs.chanId is cleared
                 chl = chanelManager.findHitListByID(newInfo.id);
 
             } else {
-                log.debug(String.format("PCP skip: %s,%d,%d", id.toString(), atomIn.childCount, atomIn.dataLength));
+                logger.log(Level.DEBUG, String.format("PCP skip: %s,%d,%d", id, atomIn.childCount, atomIn.dataLength));
                 atomIn.skip(atomIn.childCount, atomIn.dataLength);
             }
         }
@@ -804,7 +805,7 @@ if (newInfo == null) { // TODO @@@ newInfo is null, cause bcs.chanId is cleared
                 patomOut.writeBytes(id, destID.id, 16);
                 bcs.forMe = destID.equals(serventManager.sessionID);
 
-Debug.println("idstr1: " + destID + ", idstr2: " + serventManager.sessionID);
+                logger.log(Level.TRACE, "idstr1: " + destID + ", idstr2: " + serventManager.sessionID);
 
             } else if (id.equals(PCP_BCST_CHANID)) {
                 atomIn.readBytes(bcs.chanID.id, 16);
@@ -813,7 +814,7 @@ Debug.println("idstr1: " + destID + ", idstr2: " + serventManager.sessionID);
                 ver = atomIn.readInt();
                 patomOut.writeInt(id, ver);
             } else {
-Debug.println("*** HERE");
+                logger.log(Level.TRACE, "*** HERE");
                 // copy and process atoms
                 ByteArrayOutputStream pmem2 = new ByteArrayOutputStream();
                 AtomOutputStream patomOut2 = new AtomOutputStream(pmem2);
@@ -835,11 +836,11 @@ Debug.println("*** HERE");
             destStr = destID.toString();
         }
 
-log.debug(String.format("PCP bcst: group=%d, hops=%d, ver=%d, from=%s, dest=%s", bcs.group, bcs.numHops, ver, fromStr, destStr));
+        logger.log(Level.DEBUG, String.format("PCP bcst: group=%d, hops=%d, ver=%d, from=%s, dest=%s", bcs.group, bcs.numHops, ver, fromStr, destStr));
 
         if (fromID.isSet()) {
             if (fromID.equals(serventManager.sessionID)) {
-                log.error("BCST loopback");
+                logger.log(Level.ERROR, "BCST loopback");
                 return PCP_ERROR_BCST + PCP_ERROR_LOOPBACK;
             }
         }
@@ -883,14 +884,14 @@ log.debug(String.format("PCP bcst: group=%d, hops=%d, ver=%d, from=%s, dest=%s",
 
         } else if (id.equals(PCP_MESG_ASCII) || id.equals(PCP_MESG)) { // PCP_MESG_ASCII to be depreciated
             String msg = atomIn.readString(dataLength, dataLength);
-            log.debug(String.format("PCP got text: %s", msg));
+            logger.log(Level.DEBUG, String.format("PCP got text: %s", msg));
         } else if (id.equals(PCP_BCST)) {
             result = readBroadcastAtoms(atomIn, childCount, bcs);
         } else if (id.equals(PCP_HELO)) {
             atomIn.skip(childCount, dataLength);
             atomOut.writeParent(PCP_OLEH, 1);
             atomOut.writeBytes(PCP_HELO_SESSIONID, serventManager.sessionID.id, 16);
-Debug.println("*** MEM WRITE: " + atomOut);
+            logger.log(Level.TRACE, "*** MEM WRITE: " + atomOut);
         } else if (id.equals(PCP_PUSH)) {
 
             readPushAtoms(atomIn, childCount, bcs);
@@ -913,8 +914,8 @@ Debug.println("*** MEM WRITE: " + atomOut);
             }
 
         } else {
-new Exception("*** DUMMY ***").printStackTrace(System.err);
-            log.debug(String.format("PCP skip: %s: ", id.toString()) + StringUtil.getDump(id.getData()));
+            new Exception("*** DUMMY ***").printStackTrace(System.err);
+            logger.log(Level.DEBUG, String.format("PCP skip: %s: ", id) + StringUtil.getDump(id.getData()));
             atomIn.skip(childCount, dataLength);
         }
 
@@ -934,9 +935,7 @@ new Exception("*** DUMMY ***").printStackTrace(System.err);
 
     long nextRootPacket;
 
-    private List<GnuID> routeList;
+    private final List<GnuID> routeList;
 
     private GnuID remoteID;
 }
-
-/* */

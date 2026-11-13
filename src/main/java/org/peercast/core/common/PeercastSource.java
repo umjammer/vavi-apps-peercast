@@ -8,13 +8,11 @@ package org.peercast.core.common;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.net.InetSocketAddress;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-import vavi.util.Debug;
-import vavi.util.Singleton;
+import static java.lang.System.getLogger;
 
 
 /**
@@ -25,13 +23,13 @@ import vavi.util.Singleton;
  */
 class PeercastSource extends ChannelSource {
 
-    private static Log log = LogFactory.getLog(PeercastSource.class);
+    private static final Logger logger = getLogger(PeercastSource.class.getName());
 
-    private ServentManager serventManager = Singleton.getInstance(ServentManager.class);
+    private final ServentManager serventManager = Peercast.serventManager;
 
-    private ChannelManager channelManager = Singleton.getInstance(ChannelManager.class);
+    private final ChannelManager channelManager = Peercast.channelManager;
 
-    /** */
+    @Override
     void stream(Channel channel) throws IOException {
         int numYPTries = 0;
         while (true) {
@@ -40,10 +38,10 @@ class PeercastSource extends ChannelSource {
             channel.sourceHost.init();
 
             channel.setStatus(Channel.Status.SEARCHING);
-log.debug(String.format("Ch.%d searching for hit..", channel.index));
+            logger.log(Level.DEBUG, String.format("Ch.%d searching for hit..", channel.index));
             do {
                 if (channel.pushSock != null) {
-Debug.println("use push socket: @" + channel.pushSock);
+                    logger.log(Level.TRACE, "use push socket: @" + channel.pushSock);
                     channel.sock = channel.pushSock;
                     channel.pushSock = null;
                     channel.sourceHost.setAddress((InetSocketAddress) channel.sock.getRemoteSocketAddress()); // TODO remote?
@@ -61,7 +59,7 @@ Debug.println("use push socket: @" + channel.pushSock);
                     chs.excludeID = serventManager.sessionID;
                     if (chl.pickHits(chs) != 0) {
                         channel.sourceHost = chs.bestHits.get(0);
-Debug.println("source host: local: " + channel.sourceHost.getAddress());
+                        logger.log(Level.TRACE, "source host: local: " + channel.sourceHost.getAddress());
                     }
 
                     // else find global hit
@@ -71,7 +69,7 @@ Debug.println("source host: local: " + channel.sourceHost.getAddress());
                         chs.excludeID = serventManager.sessionID;
                         if (chl.pickHits(chs) != 0) {
                             channel.sourceHost = chs.bestHits.get(0);
-Debug.println("source host: global: " + channel.sourceHost.getAddress());
+                            logger.log(Level.TRACE, "source host: global: " + channel.sourceHost.getAddress());
                         }
                     }
 
@@ -84,7 +82,7 @@ Debug.println("source host: global: " + channel.sourceHost.getAddress());
                         chs.trackersOnly = true;
                         if (chl.pickHits(chs) != 0) {
                             channel.sourceHost = chs.bestHits.get(0);
-Debug.println("source host: local tracker: " + channel.sourceHost.getAddress());
+                            logger.log(Level.TRACE, "source host: local tracker: " + channel.sourceHost.getAddress());
                         }
                     }
 
@@ -96,7 +94,7 @@ Debug.println("source host: local tracker: " + channel.sourceHost.getAddress());
                         chs.trackersOnly = true;
                         if (chl.pickHits(chs) != 0) {
                             channel.sourceHost = chs.bestHits.get(0);
-Debug.println("source host: global tracker: " + channel.sourceHost.getAddress());
+                            logger.log(Level.TRACE, "source host: global tracker: " + channel.sourceHost.getAddress());
                         }
                     }
 
@@ -104,7 +102,7 @@ Debug.println("source host: global tracker: " + channel.sourceHost.getAddress())
 
                 // no trackers found so contact YP
                 if (channel.sourceHost.getAddress() == null) {
-                    if (serventManager.rootHost.length() == 0) {
+                    if (serventManager.rootHost.isEmpty()) {
                         break;
                     }
 
@@ -128,15 +126,15 @@ Debug.println("source host: global tracker: " + channel.sourceHost.getAddress())
             } while (channel.sourceHost.getAddress() == null);
 
             if (channel.sourceHost.getAddress() == null) {
-                log.error(String.format("Ch.%d giving up", channel.index));
+                logger.log(Level.ERROR, String.format("Ch.%d giving up", channel.index));
                 break;
             }
 
             if (channel.sourceHost.yp) {
                 numYPTries++;
-                log.debug(String.format("Ch.%d contacting YP, try %d", channel.index, numYPTries));
+                logger.log(Level.DEBUG, String.format("Ch.%d contacting YP, try %d", channel.index, numYPTries));
             } else {
-                log.debug(String.format("Ch.%d found hit", channel.index));
+                logger.log(Level.DEBUG, String.format("Ch.%d found hit", channel.index));
                 numYPTries = 0;
             }
 
@@ -147,22 +145,22 @@ Debug.println("source host: global tracker: " + channel.sourceHost.getAddress())
 //                    Peercast.getInstance().notifyMessage(ServentManager.NotifyType.PEERCAST, "Contacting tracker, please wait...");
 //                }
 
-String ipstr = channel.sourceHost.getAddress().getHostName();
+                String ipstr = channel.sourceHost.getAddress().getHostName();
 
-String type = "";
-if (channel.sourceHost.tracker) {
-    type = "(tracker)";
-} else if (channel.sourceHost.yp) {
-    type = "(YP)";
-}
+                String type = "";
+                if (channel.sourceHost.tracker) {
+                    type = "(tracker)";
+                } else if (channel.sourceHost.yp) {
+                    type = "(YP)";
+                }
 
                 int error = -1;
                 try {
                     channel.setStatus(Channel.Status.CONNECTING);
 
                     if (channel.sock == null) {
-log.debug(String.format("Ch.%d connecting to %s %s", channel.index, ipstr, type));
-Debug.println("address: " + channel.sourceHost.getAddress() + ": @" + channel.sourceHost.hashCode());
+                        logger.log(Level.DEBUG, String.format("Ch.%d connecting to %s %s", channel.index, ipstr, type));
+                        logger.log(Level.TRACE, "address: " + channel.sourceHost.getAddress() + ": @" + channel.sourceHost.hashCode());
                         channel.connectFetch();
                     }
 
@@ -181,11 +179,11 @@ Debug.println("address: " + channel.sourceHost.getAddress() + ": @" + channel.so
                     error = 0; // no errors, closing normally.
                     channel.setStatus(Channel.Status.CLOSING);
 
-                    log.debug(String.format("Ch.%d closed normally", channel.index));
+                    logger.log(Level.DEBUG, String.format("Ch.%d closed normally", channel.index));
 
                 } catch (IOException e) {
                     channel.setStatus(Channel.Status.ERROR);
-log.error(String.format("Ch.%d to %s %s : %s (%d)", channel.index, ipstr, type, e.getMessage(), error));
+                    logger.log(Level.ERROR, String.format("Ch.%d to %s %s : %s (%d)", channel.index, ipstr, type, e.getMessage(), error));
                     if (!channel.sourceHost.tracker || (error != 503 && channel.sourceHost.tracker)) {
                         channelManager.deadHit(channel.sourceHost);
                     }
@@ -211,7 +209,7 @@ log.error(String.format("Ch.%d to %s %s : %s (%d)", channel.index, ipstr, type, 
                             channel.sourceStream.flush(channel.sock.getOutputStream());
                         }
                     } catch (IOException e) {
-Debug.printStackTrace(e);
+                        logger.log(Level.TRACE, e);
                     }
 //                    ChannelStream cs = channel.sourceStream;
 //                    cs.sourceStream = null;
@@ -224,7 +222,7 @@ Debug.printStackTrace(e);
                 }
 
                 if (error == 404) {
-                    log.error(String.format("Ch.%d not found", channel.index));
+                    logger.log(Level.ERROR, String.format("Ch.%d not found", channel.index));
                     return;
                 }
 
@@ -239,6 +237,12 @@ Debug.printStackTrace(e);
                 }
             }
 
+            if (channel.streaming.isCancelled()) {
+                break;
+            }
+
+            channel.setStatus(Channel.Status.SEARCHING);
+
             try {
                 Thread.sleep(Peercast.idleSleepTime);
             } catch (InterruptedException e) {
@@ -246,5 +250,3 @@ Debug.printStackTrace(e);
         }
     }
 }
-
-/* */

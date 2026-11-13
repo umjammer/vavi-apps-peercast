@@ -7,14 +7,12 @@
 package org.peercast.core.common;
 
 import java.io.IOException;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 
 import org.w3c.dom.Element;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-import vavi.util.Debug;
-import vavi.util.Singleton;
+import static java.lang.System.getLogger;
 
 
 /**
@@ -25,80 +23,89 @@ import vavi.util.Singleton;
  */
 class ChannelInfo {
 
-    /** */
-    private static final Log log = LogFactory.getLog(ChannelInfo.class);
+    private static final Logger logger = getLogger(ChannelInfo.class.getName());
 
     /** */
-    private final ChannelManager channelManager = Singleton.getInstance(ChannelManager.class);
+    private final ChannelManager channelManager = Peercast.channelManager;
 
     /** */
     enum ContentType {
         /** */
-        UNKNOWN(""){
+        UNKNOWN("") {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
-                log.debug(String.format("Ch.%d is Raw", channel.index));
+                logger.log(Level.DEBUG, String.format("Ch.%d is Raw", channel.index));
                 return new RawStream();
             }
         },
 
         /** */
         RAW("") {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
-                log.debug(String.format("Ch.%d is Raw", channel.index));
+                logger.log(Level.DEBUG, String.format("Ch.%d is Raw", channel.index));
                 return new RawStream();
             }
         },
         /** */
         MP3(".mp3") {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
-                log.debug(String.format("Ch.%d is MP3 - meta: %d", channel.index, channel.icyMetaInterval));
+                logger.log(Level.DEBUG, String.format("Ch.%d is MP3 - meta: %d", channel.index, channel.icyMetaInterval));
                 return new MP3Stream();
             }
         },
         /** */
         OGG(".ogg") {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
-                log.debug(String.format("Ch.%d is OGG", channel.index));
+                logger.log(Level.DEBUG, String.format("Ch.%d is OGG", channel.index));
                 return new OGGStream();
             }
         },
         /** */
         OGM(".ogg") {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
-                log.debug(String.format("Ch.%d is OGG", channel.index));
+                logger.log(Level.DEBUG, String.format("Ch.%d is OGG", channel.index));
                 return new OGGStream();
             }
         },
         /** */
         MOV(".mov") {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
-                log.debug(String.format("Ch.%d is Raw", channel.index));
+                logger.log(Level.DEBUG, String.format("Ch.%d is Raw", channel.index));
                 return new RawStream();
             }
         },
         /** */
         MPG("") {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
-                log.debug(String.format("Ch.%d is Raw", channel.index));
+                logger.log(Level.DEBUG, String.format("Ch.%d is Raw", channel.index));
                 return new RawStream();
             }
         },
         /** */
         NSV(".nsv") {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
-                log.debug(String.format("Ch.%d is NSV", channel.index));
+                logger.log(Level.DEBUG, String.format("Ch.%d is NSV", channel.index));
                 return new NSVStream();
             }
         },
 
         /** */
         WMA(".wma") {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
                 throw new IllegalArgumentException(String.format("Ch.%d is WMA/WMV - but not MMS", channel.index));
             }
         },
         /** */
         WMV(".wmv") {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
                 throw new IllegalArgumentException(String.format("Ch.%d is WMA/WMV - but not MMS", channel.index));
             }
@@ -106,71 +113,92 @@ class ChannelInfo {
 
         /** */
         PLS("") {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
-                log.debug(String.format("Ch.%d is Raw", channel.index));
+                logger.log(Level.DEBUG, String.format("Ch.%d is Raw", channel.index));
                 return new RawStream();
             }
         },
         /** */
         ASX("") {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
-                log.debug(String.format("Ch.%d is Raw", channel.index));
+                logger.log(Level.DEBUG, String.format("Ch.%d is Raw", channel.index));
+                return new RawStream();
+            }
+        },
+        /** */
+        FLV(".flv") {
+            @Override
+            ChannelStream getChannelStream(Channel channel) {
+                logger.log(Level.DEBUG, String.format("Ch.%d is Raw", channel.index));
                 return new RawStream();
             }
         };
+
         ContentType(String extention) {
             this.extention = extention;
         }
-        String extention;
+
+        final String extention;
+
         /** */
         String getExtention() {
             return extention;
         }
-        /** @throws IllegalArgumentException */
+
+        /** @throws IllegalArgumentException  */
         abstract ChannelStream getChannelStream(Channel channel);
     }
 
     enum Protocol {
         /** */
         UNKNOWN {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
                 return channel.info.contentType.getChannelStream(channel);
             }
         },
         /** */
         PEERCAST {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
-                log.debug(String.format("Ch.%d is Peercast", channel.index));
+                logger.log(Level.DEBUG, String.format("Ch.%d is Peercast", channel.index));
                 return new PeercastStream();
             }
         },
         /** */
         HTTP {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
                 return channel.info.contentType.getChannelStream(channel);
             }
         },
         /** */
         FILE {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
                 return channel.info.contentType.getChannelStream(channel);
             }
         },
         /** */
         MMS {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
-                log.debug(String.format("Ch.%d is MMS", channel.index));
+                logger.log(Level.DEBUG, String.format("Ch.%d is MMS", channel.index));
                 return new MMSStream();
             }
         },
         /** */
         PCP {
+            @Override
             ChannelStream getChannelStream(Channel channel) {
-                log.debug(String.format("Ch.%d is PCP", channel.index));
+                logger.log(Level.DEBUG, String.format("Ch.%d is PCP", channel.index));
                 return new PCPStream(channel.remoteID);
             }
         };
-        /** @throws IllegalArgumentException */
+
+        /** @throws IllegalArgumentException  */
         abstract ChannelStream getChannelStream(Channel channel);
     }
 
@@ -198,8 +226,8 @@ class ChannelInfo {
             }
         }
 
-        if (info.name != null && info.name.length() != 0) {
-            if (name.contains(info.name)) {
+        if (info.name != null && !info.name.isEmpty()) {
+            if (name != null && name.contains(info.name)) {
                 return true;
             }
         }
@@ -238,14 +266,14 @@ class ChannelInfo {
             matchAny = false;
         }
 
-        if (info.name.length() != 0) {
+        if (!info.name.isEmpty()) {
             if (name.contains(info.name)) {
                 return true;
             }
             matchAny = false;
         }
 
-        if (info.genre.length() != 0) {
+        if (!info.genre.isEmpty()) {
             if (genre.contains(info.genre)) {
                 return true;
             }
@@ -265,14 +293,14 @@ class ChannelInfo {
         }
 
         // only update from chaninfo that has full name etc..
-        if (info.name == null || info.name.length() == 0) {
+        if (info.name == null || info.name.isEmpty()) {
             return false;
         }
 
         // check valid broadcaster key
         if (bcID.isSet()) {
             if (!bcID.equals(info.bcID)) {
-                log.error("ChanInfo BC key not valid");
+                logger.log(Level.ERROR, "ChanInfo BC key not valid");
                 return false;
             }
         }
@@ -317,15 +345,15 @@ class ChannelInfo {
     }
 
     /**
-     * @param idString "23450ABCDEF1..." 32 �����܂ł�����͂��Ȃ��A���̌�؂�̂�
+     * @param idString "23450ABCDEF1..." Only the first 32 characters are parsed, and then the rest are truncated.
      */
-    void initNameID(final String idString) {
+    void initNameID(String idString) {
         init();
         id = new GnuID(idString);
         if (!id.isSet()) {
             name = idString;
         }
-Debug.println("id: " + id + ", " + name);
+        logger.log(Level.TRACE, "id: " + id + ", " + name);
     }
 
     /** */
@@ -335,16 +363,16 @@ Debug.println("id: " + id + ", " + name);
         bitrate = 0;
         contentType = ContentType.UNKNOWN;
         srcProtocol = Protocol.UNKNOWN;
-        id = new GnuID(); // TODO ���ʂȋC��...
+        id = new GnuID(); // TODO It feels like a waste of time...
         id.clear();
         url = null;
         genre = null;
         comment = null;
-        track = new TrackInfo(); // TODO ���ʂȋC��...
+        track = new TrackInfo(); // TODO It feels like a waste of time...
         lastPlayStart = 0;
         lastPlayEnd = 0;
         numSkips = 0;
-        bcID = new GnuID(); // TODO ���ʂȋC��...
+        bcID = new GnuID(); // TODO It feels like a waste of time...
         bcID.clear();
         createdTime = 0;
     }
@@ -428,22 +456,22 @@ Debug.println("id: " + id + ", " + name);
     /** */
     void writeInfoAtoms(AtomOutputStream atomOut) throws IOException {
         atomOut.writeParent(PCPStream.PCP_CHAN_INFO, 7);
-        atomOut.writeString(PCPStream.PCP_CHAN_INFO_NAME, name);
+        atomOut.writeString(PCPStream.PCP_CHAN_INFO_NAME, name != null ? name : "");
         atomOut.writeInt(PCPStream.PCP_CHAN_INFO_BITRATE, bitrate);
-        atomOut.writeString(PCPStream.PCP_CHAN_INFO_GENRE, genre);
-        atomOut.writeString(PCPStream.PCP_CHAN_INFO_URL, url);
-        atomOut.writeString(PCPStream.PCP_CHAN_INFO_DESC, desc);
-        atomOut.writeString(PCPStream.PCP_CHAN_INFO_COMMENT, comment);
+        atomOut.writeString(PCPStream.PCP_CHAN_INFO_GENRE, genre != null ? genre : "");
+        atomOut.writeString(PCPStream.PCP_CHAN_INFO_URL, url != null ? url : "");
+        atomOut.writeString(PCPStream.PCP_CHAN_INFO_DESC, desc != null ? desc : "");
+        atomOut.writeString(PCPStream.PCP_CHAN_INFO_COMMENT, comment != null ? comment : "");
         atomOut.writeString(PCPStream.PCP_CHAN_INFO_TYPE, contentType.toString());
     }
 
     /** */
     void writeTrackAtoms(AtomOutputStream atomOut) throws IOException {
         atomOut.writeParent(PCPStream.PCP_CHAN_TRACK, 4);
-        atomOut.writeString(PCPStream.PCP_CHAN_TRACK_TITLE, track.title);
-        atomOut.writeString(PCPStream.PCP_CHAN_TRACK_CREATOR, track.artist);
-        atomOut.writeString(PCPStream.PCP_CHAN_TRACK_URL, track.contact);
-        atomOut.writeString(PCPStream.PCP_CHAN_TRACK_ALBUM, track.album);
+        atomOut.writeString(PCPStream.PCP_CHAN_TRACK_TITLE, track.title != null ? track.title : "");
+        atomOut.writeString(PCPStream.PCP_CHAN_TRACK_CREATOR, track.artist != null ? track.artist : "");
+        atomOut.writeString(PCPStream.PCP_CHAN_TRACK_URL, track.contact != null ? track.contact : "");
+        atomOut.writeString(PCPStream.PCP_CHAN_TRACK_ALBUM, track.album != null ? track.album : "");
     }
 
     /** */
@@ -516,12 +544,12 @@ Debug.println("id: " + id + ", " + name);
         }
 
         typeStr = readXMLString(n, "type");
-        if (typeStr.length() != 0) {
+        if (!typeStr.isEmpty()) {
             contentType = ContentType.valueOf(typeStr);
         }
 
         idStr = readXMLString(n, "id");
-        if (idStr.length() != 0) {
+        if (!idStr.isEmpty()) {
             id = new GnuID(idStr);
         }
 
@@ -534,7 +562,7 @@ Debug.println("id: " + id + ", " + name);
     }
 
     /** */
-    void init(final String n, GnuID cid, ContentType tp, int br) {
+    void init(String n, GnuID cid, ContentType tp, int br) {
         init();
 
         name = n;
@@ -544,7 +572,7 @@ Debug.println("id: " + id + ", " + name);
     }
 
     /** */
-    void init(final String fn) {
+    void init(String fn) {
         init();
 
         if (fn != null) {
@@ -553,7 +581,7 @@ Debug.println("id: " + id + ", " + name);
     }
 
     /** */
-    private static String readXMLString(Element n, final String arg) {
+    private static String readXMLString(Element n, String arg) {
         return n.getAttribute(arg);
     }
 
@@ -584,5 +612,3 @@ Debug.println("id: " + id + ", " + name);
 
     String desc, genre, url, comment;
 }
-
-/* */

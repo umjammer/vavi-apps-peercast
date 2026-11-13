@@ -7,8 +7,7 @@
 package org.peercast.core.common;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 
 
 /**
@@ -37,6 +36,7 @@ class ChannelPacketBuffer {
             readPos = writePos = 0;
             accept = 0;
             lastWriteTime = 0;
+            Arrays.fill(packets, null);
         }
     }
 
@@ -51,11 +51,12 @@ class ChannelPacketBuffer {
                 readPos = 0;
 
                 for (int i = buf.firstPos; i <= buf.lastPos; i++) {
-                    ChannelPacket src = buf.packets.get(i);
-                    if ((src.type.value & accept) != 0) {
+                    ChannelPacket src = buf.packets[i % MAX_PACKETS];
+                    if (src != null && (src.type.value & accept) != 0) {
                         if (src.pos >= reqPos) {
                             lastPos = writePos;
-                            packets.add(writePos++, src);
+                            packets[writePos % MAX_PACKETS] = src;
+                            writePos++;
                         }
                     }
                 }
@@ -66,8 +67,6 @@ class ChannelPacketBuffer {
 
     /** */
     ChannelPacket findPacket(int spos) {
-        ChannelPacket pack = null;
-
         if (writePos == 0) {
             return null;
         }
@@ -79,8 +78,8 @@ class ChannelPacketBuffer {
                 spos = fpos;
 
             for (int i = firstPos; i <= lastPos; i++) {
-                pack = packets.get(i % MAX_PACKETS);
-                if (pack.pos >= spos) {
+                ChannelPacket pack = packets[i % MAX_PACKETS];
+                if (pack != null && pack.pos >= spos) {
                     return pack;
                 }
             }
@@ -91,7 +90,7 @@ class ChannelPacketBuffer {
 
     /** */
     int getLatestPos() {
-        if (writePos != 0) {
+        if (writePos == 0) {
             return 0;
         } else {
             return getStreamPos(lastPos);
@@ -100,7 +99,7 @@ class ChannelPacketBuffer {
 
     /** */
     int getOldestPos() {
-        if (writePos != 0) {
+        if (writePos == 0) {
             return 0;
         } else {
             return getStreamPos(firstPos);
@@ -116,25 +115,24 @@ class ChannelPacketBuffer {
             return min;
         }
 
-        if (max < spos) {
-            return max;
-        }
+        return Math.min(max, spos);
 
-        return spos;
     }
 
     /** */
     int getStreamPos(int index) {
-        if (packets.size() == 0) {
+        ChannelPacket pack = packets[index % MAX_PACKETS];
+        if (pack == null) {
             return 0; // TODO check
         } else {
-            return packets.get(index).pos;
+            return pack.pos;
         }
     }
 
     /** */
     int getStreamPosEnd(int index) {
-        return packets.get(index).pos + packets.get(index).data.length;
+        ChannelPacket pack = packets[index % MAX_PACKETS];
+        return pack.pos + pack.data.length;
     }
 
     /** */
@@ -147,7 +145,7 @@ class ChannelPacketBuffer {
             synchronized (this) {
 
                 pack.sync = writePos;
-                packets.add(writePos, pack);
+                packets[writePos % MAX_PACKETS] = pack;
                 lastPos = writePos;
                 writePos++;
 
@@ -194,7 +192,7 @@ class ChannelPacketBuffer {
             }
         }
         synchronized (this) {
-            packet = packets.get(readPos % MAX_PACKETS);
+            packet = packets[readPos % MAX_PACKETS];
             readPos++;
         }
 
@@ -217,7 +215,7 @@ class ChannelPacketBuffer {
     }
 
     /** */
-    private List<ChannelPacket> packets = new ArrayList<>();
+    private final ChannelPacket[] packets = new ChannelPacket[MAX_PACKETS];
 
     /** */
     private volatile int lastPos, firstPos, safePos;
@@ -226,7 +224,7 @@ class ChannelPacketBuffer {
     private volatile int readPos;
 
     /** */
-    volatile int  writePos;
+    volatile int writePos;
 
     /** */
     int accept;
@@ -234,5 +232,3 @@ class ChannelPacketBuffer {
     /** */
     long lastWriteTime;
 }
-
-/* */

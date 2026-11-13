@@ -24,5 +24,3 @@ abstract class ChannelSource {
     /** */
     abstract void stream(Channel channel) throws IOException;
 }
-
-/* */

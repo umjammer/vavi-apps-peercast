@@ -11,24 +11,24 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.List;
 
+import org.peercast.core.common.GnuStream.ResultType;
+import org.peercast.core.common.Stats.STAT;
+import javax.xml.parsers.ParserConfigurationException;
+
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
-
 import org.xml.sax.SAXException;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.peercast.core.common.GnuStream.ResultType;
-import org.peercast.core.common.Stats.STAT;
-
 import vavi.io.UtilInputStream;
-import vavi.util.Singleton;
 import vavi.xml.util.PrettyPrinter;
+
+import static java.lang.System.getLogger;
 
 
 /**
@@ -39,18 +39,18 @@ import vavi.xml.util.PrettyPrinter;
  */
 class GnuPacket {
 
-    /** */
-    private static Log log = LogFactory.getLog(GnuPacket.class);
+    private static final Logger logger = getLogger(GnuPacket.class.getName());
 
-    private static ServentManager serventManager = Singleton.getInstance(ServentManager.class);
+    private static final ServentManager serventManager = Peercast.serventManager;
 
-    private static ChannelManager channelMabager = Singleton.getInstance(ChannelManager.class);
+    private static final ChannelManager channelManager = Peercast.channelManager;
 
     /** */
     static final int GNUTELLA_SETUP = 0;
 
     /** */
     interface GnuFunction {
+
         ResultType exec(GnuPacket in, Servent serv, GnuID routeID) throws IOException;
 
         int getNumber();
@@ -62,18 +62,19 @@ class GnuPacket {
 
     /** */
     static GnuFunction PING = new GnuFunction() {
+        @Override
         public ResultType exec(GnuPacket in, Servent serv, GnuID routeID) throws IOException {
             InetSocketAddress remoteHost = serv.getHost();
 
             ResultType ret = ResultType.DISCARD;
 
-log.debug(String.format("ping: from %d.%d.%d.%d : %02x%02x%02x%02x", remoteHost.getAddress().getAddress()[0], remoteHost.getAddress().getAddress()[1], remoteHost.getAddress().getAddress()[2], remoteHost.getAddress().getAddress()[0], in.id.id[0], in.id.id[1], in.id.id[2], in.id.id[3]));
+            logger.log(Level.DEBUG, String.format("ping: from %d.%d.%d.%d : %02x%02x%02x%02x", remoteHost.getAddress().getAddress()[0], remoteHost.getAddress().getAddress()[1], remoteHost.getAddress().getAddress()[2], remoteHost.getAddress().getAddress()[0], in.id.id[0], in.id.id[1], in.id.id[2], in.id.id[3]));
             InetSocketAddress sh = serventManager.serverHost;
             if (sh.getAddress() != null) {
                 if ((serventManager.getFirewall() != ServentManager.FirewallState.ON) && (!serventManager.pubInFull())) {
                     GnuPacket pong = new GnuPacket(sh, true, in);
                     if (serv.outputPacket(pong, true)) {
-                        log.debug("pong out");
+                        logger.log(Level.DEBUG, "pong out");
                     }
                 }
                 ret = ResultType.BROADCAST;
@@ -85,14 +86,17 @@ log.debug(String.format("ping: from %d.%d.%d.%d : %02x%02x%02x%02x", remoteHost.
             return "PING";
         }
 
+        @Override
         public int getNumber() {
             return 0;
         }
 
+        @Override
         public STAT getInStat() {
             return Stats.STAT.NUMPINGIN;
         }
 
+        @Override
         public STAT getOutStat() {
             return Stats.STAT.NUMPINGOUT;
         }
@@ -100,6 +104,7 @@ log.debug(String.format("ping: from %d.%d.%d.%d : %02x%02x%02x%02x", remoteHost.
 
     /** */
     static GnuFunction PONG = new GnuFunction() {
+        @Override
         public ResultType exec(GnuPacket in, Servent serv, GnuID routeID) throws IOException {
             ByteArrayInputStream data = new ByteArrayInputStream(in.data); // , in.len
             DataInputStream dis = new DataInputStream(data);
@@ -111,16 +116,16 @@ log.debug(String.format("ping: from %d.%d.%d.%d : %02x%02x%02x%02x", remoteHost.
             int port = dis.readShort();
             int ip = dis.readInt();
             int count = dis.readInt();
-log.debug("count: " + count);
+            logger.log(Level.DEBUG, "count: " + count);
             int total = dis.readInt();
-log.debug("total: " + total);
+            logger.log(Level.DEBUG, "total: " + total);
 
             InetSocketAddress h = new InetSocketAddress(InetAddress.getByAddress(Peercast.intToByte(ip)), port);
 
             String sIP = h.getHostName();
             String rIP = remoteHost.getHostName();
 
-log.debug(String.format("pong: %s via %s : %02x%02x%02x%02x", sIP, ip, rIP, in.id.id[0], in.id.id[1], in.id.id[2], in.id.id[3]));
+            logger.log(Level.DEBUG, String.format("pong: %s via %s : %02x%02x%02x%02x", sIP, ip, rIP, in.id.id[0], in.id.id[1], in.id.id[2], in.id.id[3]));
 
             resultt = ResultType.DISCARD;
 
@@ -142,14 +147,17 @@ log.debug(String.format("pong: %s via %s : %02x%02x%02x%02x", sIP, ip, rIP, in.i
             return "PONG";
         }
 
+        @Override
         public int getNumber() {
             return 1;
         }
 
+        @Override
         public STAT getInStat() {
             return Stats.STAT.NUMPONGIN;
         }
 
+        @Override
         public STAT getOutStat() {
             return Stats.STAT.NUMPONGOUT;
         }
@@ -157,6 +165,7 @@ log.debug(String.format("pong: %s via %s : %02x%02x%02x%02x", sIP, ip, rIP, in.i
 
     /** */
     static GnuFunction QUERY = new GnuFunction() {
+        @Override
         public ResultType exec(GnuPacket in, Servent serv, GnuID routeID) throws IOException {
             ByteArrayInputStream data = new ByteArrayInputStream(in.data); // in.len
             DataInputStream dis = new DataInputStream(data);
@@ -170,7 +179,7 @@ log.debug(String.format("pong: %s via %s : %02x%02x%02x%02x", sIP, ip, rIP, in.i
             }
 
             short spd = dis.readShort();
-log.debug("spd: " + spd);
+            logger.log(Level.DEBUG, "spd: " + spd);
             String words = uis.readAsciiz();
 
             String xm = dis.readUTF(); // TODO check
@@ -178,11 +187,11 @@ log.debug("spd: " + spd);
             List<Channel> hitChannels = null;
 
             if (xm.startsWith("<?xml")) {
-                Document xml = null;
+                Document xml;
                 try {
-                    xml = Peercast.db.parse(xm);
-                } catch (SAXException e) {
-                    throw (RuntimeException) new IllegalStateException().initCause(e);
+                    xml = Peercast.newDocumentBuilder().parse(xm);
+                } catch (SAXException | ParserConfigurationException e) {
+                    throw new IllegalStateException(e);
                 }
                 NodeList nodeList = xml.getElementsByTagName("channel");
                 if (nodeList.getLength() > 0) {
@@ -190,22 +199,22 @@ log.debug("spd: " + spd);
                     ChannelInfo info = new ChannelInfo();
                     info.init(cn);
                     info.status = ChannelInfo.Status.PLAY;
-                    hitChannels = channelMabager.findChannels(info, 16);
+                    hitChannels = channelManager.findChannels(info, 16);
                 }
-log.debug(String.format("query XML: %s : found %d", xm, hitChannels.size()));
+                logger.log(Level.DEBUG, "query XML: %s : found %d".formatted(xm, hitChannels.size()));
             } else {
                 ChannelInfo info = new ChannelInfo();
                 info.name = words;
                 info.genre = words;
                 info.id = new GnuID(words);
                 info.status = ChannelInfo.Status.PLAY;
-                hitChannels = channelMabager.findChannels(info, 16);
-log.debug(String.format("query STR: %s : found %d", words, hitChannels.size()));
+                hitChannels = channelManager.findChannels(info, 16);
+                logger.log(Level.DEBUG, "query STR: %s : found %d".formatted(words, hitChannels.size()));
             }
 
             for (Channel channel : hitChannels) {
                 boolean push = (serventManager.getFirewall() != ServentManager.FirewallState.OFF);
-                boolean busy = (serventManager.pubInFull() && serventManager.outFull()) || serventManager.relaysFull();
+                boolean busy = (serventManager.pubInFull() && ServentManager.outFull()) || serventManager.relaysFull();
                 boolean stable = serventManager.totalStreams > 0;
                 boolean tracker = channel.isBroadcasting();
 
@@ -213,7 +222,7 @@ log.debug(String.format("query STR: %s : found %d", words, hitChannels.size()));
                     GnuPacket hit = new GnuPacket(sh, channel, in, push, busy, stable, tracker, in.hops);
                     serv.outputPacket(hit, true);
                 } catch (Exception e) {
-                    System.err.println(e);
+                    logger.log(Level.ERROR, e.getMessage(), e);
                 }
             }
 
@@ -224,14 +233,17 @@ log.debug(String.format("query STR: %s : found %d", words, hitChannels.size()));
             return "QUERY";
         }
 
+        @Override
         public int getNumber() {
             return 128;
         }
 
+        @Override
         public STAT getInStat() {
             return Stats.STAT.NUMQUERYIN;
         }
 
+        @Override
         public STAT getOutStat() {
             return Stats.STAT.NUMQUERYOUT;
         }
@@ -239,6 +251,7 @@ log.debug(String.format("query STR: %s : found %d", words, hitChannels.size()));
 
     /** */
     static GnuFunction HIT = new GnuFunction() {
+        @Override
         public ResultType exec(GnuPacket in, Servent serv, GnuID routeID) throws IOException {
             ByteArrayInputStream data = new ByteArrayInputStream(in.data); // in.len
 
@@ -256,7 +269,7 @@ log.debug(String.format("query STR: %s : found %d", words, hitChannels.size()));
                 }
 
                 ret = ResultType.BROADCAST;
-log.debug(String.format("broadcast-hit: %s", flstr));
+                logger.log(Level.DEBUG, String.format("broadcast-hit: %s", flstr));
             }
 
             return ret;
@@ -266,14 +279,17 @@ log.debug(String.format("broadcast-hit: %s", flstr));
             return "HIT";
         }
 
+        @Override
         public int getNumber() {
             return 129;
         }
 
+        @Override
         public STAT getInStat() {
             return Stats.STAT.NUMHITIN;
         }
 
+        @Override
         public STAT getOutStat() {
             return Stats.STAT.NUMHITOUT;
         }
@@ -281,6 +297,7 @@ log.debug(String.format("broadcast-hit: %s", flstr));
 
     /** */
     static GnuFunction PUSH = new GnuFunction() {
+        @Override
         public ResultType exec(GnuPacket in, Servent serv, GnuID routeID) throws IOException {
             ByteArrayInputStream data = new ByteArrayInputStream(in.data); // in.len
             DataInputStream dis = new DataInputStream(data);
@@ -288,7 +305,7 @@ log.debug(String.format("broadcast-hit: %s", flstr));
             ResultType ret = ResultType.DISCARD;
 
             GnuID pid = new GnuID();
-            data.read(pid.id, 0, 16);
+            dis.readFully(pid.id, 0, 16);
 
             int index = dis.readInt();
             int ip = dis.readInt();
@@ -300,7 +317,7 @@ log.debug(String.format("broadcast-hit: %s", flstr));
             if (serventManager.isReplyID(pid)) {
                 ret = ResultType.ACCEPTED;
             } else {
-log.debug(String.format("push: 0x%x to %s: ROUTE", index, hostName));
+                logger.log(Level.DEBUG, String.format("push: 0x%x to %s: ROUTE", index, hostName));
                 System.arraycopy(pid.id, 0, routeID.id, 0, pid.id.length);
                 ret = ResultType.ROUTE;
             }
@@ -311,14 +328,17 @@ log.debug(String.format("push: 0x%x to %s: ROUTE", index, hostName));
             return "PUSH";
         }
 
+        @Override
         public int getNumber() {
             return 64;
         }
 
+        @Override
         public STAT getInStat() {
             return Stats.STAT.NUMPUSHIN;
         }
 
+        @Override
         public STAT getOutStat() {
             return Stats.STAT.NUMPUSHOUT;
         }
@@ -418,7 +438,7 @@ log.debug(String.format("push: 0x%x to %s: ROUTE", index, hostName));
         dos.writeShort(h.getPort()); // port
         dos.writeInt(Peercast.byteToInt(h.getAddress().getAddress())); // ip
         if (ownPong) {
-            dos.writeLong(channelMabager.numChannels()); // cnt
+            dos.writeLong(channelManager.numChannels()); // cnt
             dos.writeLong(serventManager.totalOutput(false)); // total
         } else {
             dos.writeLong(0); // cnt
@@ -428,22 +448,22 @@ log.debug(String.format("push: 0x%x to %s: ROUTE", index, hostName));
 
     /** */
     void initPush(ChannelHit ch, InetSocketAddress sh) {
-        // func = GNU_FUNC_PUSH;
-        // ttl = ch.numHops;
-        // hops = 0;
-        // len = 26;
-        // id.generate();
-        //
-        // MemoryStream data(data, len);
-        //
-        // // ID of Hit packet
-        // data.write(ch.packetID.id, 16);
-        //
-        // // index of channel
-        // data.writeLong(ch.index);
-        //
-        // data.writeLong(SWAP4(sh.ip)); // ip
-        // data.writeShort(sh.port); // port
+//        func = GNU_FUNC_PUSH;
+//        ttl = ch.numHops;
+//        hops = 0;
+//        len = 26;
+//        id.generate();
+//
+//        MemoryStream data (data, len);
+//
+//        // ID of Hit packet
+//        data.write(ch.packetID.id, 16);
+//
+//        // index of channel
+//        data.writeLong(ch.index);
+//
+//        data.writeLong(SWAP4(sh.ip)); // ip
+//        data.writeShort(sh.port); // port
     }
 
     /** hit */
@@ -520,7 +540,7 @@ log.debug(String.format("push: 0x%x to %s: ROUTE", index, hostName));
             ByteArrayOutputStream pmem = new ByteArrayOutputStream(); // , sizeof(pbuf)
             DataOutputStream pdos = new DataOutputStream(pmem);
             xml = Peercast.db.newDocument();
-            Element pn = serventManager.createServentXML();
+            Element pn = ServentManager.createServentXML();
             xml.appendChild(pn);
             pp = new PrettyPrinter(pmem);
             pp.print(xml);
@@ -543,7 +563,7 @@ log.debug(String.format("push: 0x%x to %s: ROUTE", index, hostName));
         data = mem.toByteArray();
         len = data.length;
 
-        log.debug(String.format("Created Hit packet: %d bytes", len));
+        logger.log(Level.DEBUG, String.format("Created Hit packet: %d bytes", len));
 
         if (len >= MAX_DATA) {
             throw new IllegalArgumentException("len >= MAX_DATA");
@@ -679,5 +699,3 @@ class GnuPacketBuffer {
 
     int readPtr, writePtr;
 }
-
-/* */

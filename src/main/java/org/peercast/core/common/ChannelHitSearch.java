@@ -59,5 +59,3 @@ class ChannelHitSearch {
     /** */
     GnuID excludeID;
 }
-
-/* */

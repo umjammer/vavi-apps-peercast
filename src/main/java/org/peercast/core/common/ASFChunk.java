@@ -63,5 +63,3 @@ class ASFChunk {
         dos.write(data, 0, dataLen);
     }
 }
-
-/* */

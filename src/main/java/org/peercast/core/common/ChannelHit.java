@@ -9,13 +9,14 @@ package org.peercast.core.common;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 
 import org.w3c.dom.Element;
 
-import vavi.util.Debug;
-import vavi.util.Singleton;
+import static java.lang.System.getLogger;
 
 
 /**
@@ -25,8 +26,11 @@ import vavi.util.Singleton;
  * @version 0.00 050811 nsano initial version <br>
  */
 class ChannelHit implements Comparable<ChannelHit> {
+
+    private static final Logger logger = getLogger(ChannelHit.class.getName());
+
     /** */
-    private ServentManager serventManager = Singleton.getInstance(ServentManager.class);
+    private final ServentManager serventManager = Peercast.serventManager;
 
     /** */
     Element createXML() {
@@ -55,10 +59,10 @@ class ChannelHit implements Comparable<ChannelHit> {
     void pickNearestIP(InetSocketAddress address) {
         for (int i = 0; i < 2; i++) {
             if (address.getAddress().isAnyLocalAddress() == remoteAddresses[i].getAddress().isAnyLocalAddress() ||
-                address.getAddress().isLinkLocalAddress() == remoteAddresses[i].getAddress().isLinkLocalAddress() ||
-                address.getAddress().isLoopbackAddress() == remoteAddresses[i].getAddress().isLoopbackAddress()) {
+                    address.getAddress().isLinkLocalAddress() == remoteAddresses[i].getAddress().isLinkLocalAddress() ||
+                    address.getAddress().isLoopbackAddress() == remoteAddresses[i].getAddress().isLoopbackAddress()) {
                 this.address = remoteAddresses[i];
-Debug.println("address: " + address + ": " + hashCode());
+logger.log(Level.DEBUG, "address: " + address + ": " + hashCode());
                 break;
             }
         }
@@ -72,7 +76,7 @@ Debug.println("address: " + address + ": " + hashCode());
     /** */
     void init() {
 //new Exception("*** address cleared: " + address).printStackTrace();
-//Debug.println("*** address cleared: " + address);
+//logger.log(Level.DEBUG, "*** address cleared: " + address);
         address = null;
 
         remoteAddresses[0] = null;
@@ -115,7 +119,7 @@ Debug.println("address: " + address + ": " + hashCode());
         cin = !serventManager.controlInFull();
 
         address = serventManager.serverHost;
-Debug.println("address: " + address + ": @" + hashCode());
+        logger.log(Level.TRACE, "address: " + address + ": @" + hashCode());
 
         if (firewalled) {
             remoteAddresses[0] = new InetSocketAddress(address.getAddress(), 0);
@@ -186,29 +190,22 @@ Debug.println("address: " + address + ": @" + hashCode());
     }
 
     /** */
-    boolean writeVariable(OutputStream out, final String var) {
+    boolean writeVariable(OutputStream out, String var) {
         String buf;
 
-        if (var.equals("rhost0")) {
-            buf = remoteAddresses[0].getHostName();
-        } else if (var.equals("rhost1")) {
-            buf= remoteAddresses[1].getHostName();
-        } else if (var.equals("numHops")) {
-            buf = String.format("%d", numHops);
-        } else if (var.equals("numListeners")) {
-            buf = String.format("%d", numListeners);
-        } else if (var.equals("numRelays")) {
-            buf = String.format("%d", numRelays);
-        } else if (var.equals("uptime")) {
-            buf = Peercast.getFromStopwatch((int) (upTime / 1000));
-        } else if (var.equals("update")) {
-            buf = Peercast.getFromStopwatch((int) ((System.currentTimeMillis() - time) / 1000));
-        } else if (var.equals("isFirewalled")) {
-            buf = String.format("%d", firewalled ? 1 : 0);
-        } else if (var.equals("agent")) {
-            buf = agentStr;
-        } else {
-            return false;
+        switch (var) {
+            case "rhost0" -> buf = remoteAddresses[0].getHostName();
+            case "rhost1" -> buf = remoteAddresses[1].getHostName();
+            case "numHops" -> buf = String.format("%d", numHops);
+            case "numListeners" -> buf = String.format("%d", numListeners);
+            case "numRelays" -> buf = String.format("%d", numRelays);
+            case "uptime" -> buf = Peercast.getFromStopwatch((int) (upTime / 1000));
+            case "update" -> buf = Peercast.getFromStopwatch((int) ((System.currentTimeMillis() - time) / 1000));
+            case "isFirewalled" -> buf = String.format("%d", firewalled ? 1 : 0);
+            case "agent" -> buf = agentStr;
+            default -> {
+                return false;
+            }
         }
 
         PrintStream ps = new PrintStream(out);
@@ -216,6 +213,7 @@ Debug.println("address: " + address + ": @" + hashCode());
         return true;
     }
 
+    @Override
     public int compareTo(ChannelHit c2) {
         return (int) (this.time - c2.time);
     }
@@ -230,9 +228,9 @@ Debug.println("address: " + address + ": @" + hashCode());
 
     /** */
     public void setAddress(InetSocketAddress address) {
-if (address == null) {
- new Exception("*** DUMMY *** address: " + address + ": " + hashCode()).printStackTrace();
-}
+        if (address == null) {
+            new Exception("*** DUMMY *** address: " + address + ": " + hashCode()).printStackTrace();
+        }
         this.address = address;
     }
 
@@ -268,5 +266,3 @@ if (address == null) {
     boolean relay = true;
     boolean cin = true;
 }
-
-/* */

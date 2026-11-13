@@ -40,7 +40,8 @@ class ChannelPacket {
         /** */
         ALL(0xff);
         /** */
-        int value;
+        final int value;
+
         /** */
         Type(int value) {
             this.value = value;
@@ -52,7 +53,7 @@ class ChannelPacket {
     }
 
     /** */
-    ChannelPacket(Type type, final byte[] data, int length, int pos) throws IOException {
+    ChannelPacket(Type type, byte[] data, int length, int pos) throws IOException {
         this.type = type;
         if (length > MAX_DATALEN) {
             throw new IOException("Packet data too large");
@@ -111,5 +112,3 @@ class ChannelPacket {
 
     byte[] data;
 }
-
-/* */

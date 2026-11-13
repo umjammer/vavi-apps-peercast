@@ -18,26 +18,26 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-import vavi.util.Singleton;
+import static java.lang.System.getLogger;
 
 
 /**
  * ChannelStream.
  *
- * @version 12-mar-2004
  * @author giles
+ * @version 12-mar-2004
  */
 abstract class ChannelStream {
-    private static Log log = LogFactory.getLog(ChannelStream.class);
+
+    private static final Logger logger = getLogger(ChannelStream.class.getName());
 
     /** */
-    private ServentManager serventManager = Singleton.getInstance(ServentManager.class);
+    private final ServentManager serventManager = Peercast.serventManager;
 
-    private ChannelManager channelManager = Singleton.getInstance(ChannelManager.class);
+    private final ChannelManager channelManager = Peercast.channelManager;
 
     ChannelStream() {
         numListeners = 0;
@@ -55,7 +55,7 @@ abstract class ChannelStream {
                 GnuID noID = new GnuID();
                 noID.clear();
                 int cnt = channelManager.broadcastPacketUp(pack, channel.info.id, serventManager.sessionID, noID);
-                log.debug(String.format("Sent channel status update to %d clients", cnt));
+                logger.log(Level.DEBUG, String.format("Sent channel status update to %d clients", cnt));
             }
         }
     }
@@ -74,10 +74,10 @@ abstract class ChannelStream {
         int newLocalRelays = channel.localRelays();
 
         if (((numListeners != newLocalListeners) ||
-             (numRelays != newLocalRelays) ||
-             (channel.isPlaying() != isPlaying) ||
-             (serventManager.getFirewall().ordinal() != fwState) ||
-             (((ctime - lastUpdate) > channelManager.hostUpdateInterval) && channelManager.hostUpdateInterval != 0)) && ((ctime - lastUpdate) > 10)) {
+                (numRelays != newLocalRelays) ||
+                (channel.isPlaying() != isPlaying) ||
+                (serventManager.getFirewall().ordinal() != fwState) ||
+                (((ctime - lastUpdate) > channelManager.hostUpdateInterval) && channelManager.hostUpdateInterval != 0)) && ((ctime - lastUpdate) > 10)) {
 
             numListeners = newLocalListeners;
             numRelays = newLocalRelays;
@@ -147,5 +147,3 @@ abstract class ChannelStream {
     /** */
     protected long lastUpdate;
 }
-
-/* */

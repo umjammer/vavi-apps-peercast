@@ -23,8 +23,8 @@ import vavi.io.LittleEndianDataOutputStream;
 /**
  * AtomStream.
  *
- * @version 1-mar-2004
  * @author giles
+ * @version 1-mar-2004
  */
 class AtomOutputStream {
 
@@ -61,7 +61,7 @@ class AtomOutputStream {
         dos.writeByte(d);
     }
 
-    void writeBytes(ID4 id, final byte[] bytes, int length) throws IOException {
+    void writeBytes(ID4 id, byte[] bytes, int length) throws IOException {
         dos.write(id.getData());
         dos.writeInt(length);
         dos.write(bytes, 0, length);
@@ -75,7 +75,10 @@ class AtomOutputStream {
         return (2 * 2) + length;
     }
 
-    void writeString(ID4 id, final String string) throws IOException {
+    void writeString(ID4 id, String string) throws IOException {
+        if (string == null) {
+            string = "";
+        }
         writeBytes(id, string.getBytes(), string.length());
     }
 
@@ -99,12 +102,10 @@ class AtomOutputStream {
         return total;
     }
 
-    private LittleEndianDataOutputStream dos;
+    private final LittleEndianDataOutputStream dos;
 
     /** */
     public void flush() throws IOException {
         dos.flush();
     }
 }
-
-/* */

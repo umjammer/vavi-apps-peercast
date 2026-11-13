@@ -13,6 +13,7 @@ package org.peercast.core.common;
  * @version 0.00 050811 nsano initial version <br>
  */
 class TrackInfo {
+
     void clear() {
         contact = "";
         title = "";
@@ -55,5 +56,3 @@ class TrackInfo {
 
     String contact, title, artist, album, genre;
 }
-
-/* */

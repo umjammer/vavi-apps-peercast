@@ -24,6 +24,8 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -32,23 +34,20 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
-import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 import vavi.net.http.HttpContext;
 import vavi.net.http.HttpProtocol;
 import vavi.net.http.HttpServletRequestAdapter;
@@ -56,27 +55,29 @@ import vavi.net.http.HttpServletResponseAdapter;
 import vavi.net.http.HttpUtil;
 import vavi.net.inet.InetServer;
 import vavi.net.inet.SocketHandlerFactory;
-import vavi.util.Debug;
-import vavi.util.Singleton;
 import vavi.xml.util.PrettyPrinter;
+
+import static java.lang.System.getLogger;
 
 
 /**
  * Servent handles the actual connection between clients
  *
- * @version 4-apr-2002
  * @author giles
+ * @version 4-apr-2002
  */
 class Servent {
 
-    /** */
-    private static Log log = LogFactory.getLog(Servent.class);
+    private static final Logger logger = getLogger(Servent.class.getName());
 
     /** */
-    private ServentManager serventManager = Singleton.getInstance(ServentManager.class);
+    private static final Log log = LogFactory.getLog(Servent.class);
 
     /** */
-    private ChannelManager channelManager = Singleton.getInstance(ChannelManager.class);
+    private final ServentManager serventManager = Peercast.serventManager;
+
+    /** */
+    private final ChannelManager channelManager = Peercast.channelManager;
 
     /** max. amount of packet hashes Servents can store */
     static final int MAX_HASH = 500;
@@ -147,112 +148,71 @@ class Servent {
     enum Sort {
         /** */
         BY_NAME {
+            @Override
             public Comparator<ChannelHitList> getComparator(boolean isDown) {
                 if (isDown) {
-                    return new Comparator<ChannelHitList>() {
-                        public int compare(ChannelHitList c1, ChannelHitList c2) {
-                            return c1.info.name.compareToIgnoreCase(c2.info.name);
-                        }
-                    };
+                    return (c1, c2) -> c1.info.name.compareToIgnoreCase(c2.info.name);
                 } else {
-                    return new Comparator<ChannelHitList>() {
-                        public int compare(ChannelHitList c1, ChannelHitList c2) {
-                            return c1.info.name.compareToIgnoreCase(c2.info.name);
-                        }
-                    };
+                    return (c1, c2) -> c1.info.name.compareToIgnoreCase(c2.info.name);
                 }
             }
         },
         /** */
         BY_BITRATE {
+            @Override
             public Comparator<ChannelHitList> getComparator(boolean isDown) {
                 if (isDown) {
-                    return new Comparator<ChannelHitList>() {
-                        public int compare(ChannelHitList c1, ChannelHitList c2) {
-                            return c1.info.bitrate - c2.info.bitrate;
-                        }
-                    };
+                    return Comparator.comparingInt(c -> c.info.bitrate);
                 } else {
-                    return new Comparator<ChannelHitList>() {
-                        public int compare(ChannelHitList c1, ChannelHitList c2) {
-                            return c1.info.bitrate - c2.info.bitrate;
-                        }
-                    };
+                    return Comparator.comparingInt(c -> c.info.bitrate);
                 }
             }
         },
         /** */
         BY_LISTENERS {
+            @Override
             public Comparator<ChannelHitList> getComparator(boolean isDown) {
                 if (isDown) {
-                    return new Comparator<ChannelHitList>() {
-                        public int compare(ChannelHitList c1, ChannelHitList c2) {
-                            return c1.numListeners() - c2.numListeners();
-                        }
-                    };
+                    return Comparator.comparingInt(ChannelHitList::numListeners);
                 } else {
-                    return new Comparator<ChannelHitList>() {
-                        public int compare(ChannelHitList c1, ChannelHitList c2) {
-                            return c1.numListeners() - c2.numListeners();
-                        }
-                    };
+                    return Comparator.comparingInt(ChannelHitList::numListeners);
                 }
             }
         },
         /** */
         BY_HOSTS {
+            @Override
             public Comparator<ChannelHitList> getComparator(boolean isDown) {
                 if (isDown) {
-                    return new Comparator<ChannelHitList>() {
-                        public int compare(ChannelHitList c1, ChannelHitList c2) {
-                            return c1.numHits() - c2.numHits();
-                        }
-                    };
+                    return Comparator.comparingInt(ChannelHitList::numHits);
                 } else {
-                    return new Comparator<ChannelHitList>() {
-                        public int compare(ChannelHitList c1, ChannelHitList c2) {
-                            return c1.numHits() - c2.numHits();
-                        }
-                    };
+                    return Comparator.comparingInt(ChannelHitList::numHits);
                 }
             }
         },
         /** */
         BY_TYPE {
+            @Override
             public Comparator<ChannelHitList> getComparator(boolean isDown) {
                 if (isDown) {
-                    return new Comparator<ChannelHitList>() {
-                        public int compare(ChannelHitList c1, ChannelHitList c2) {
-                            return c1.info.contentType.compareTo(c2.info.contentType);
-                        }
-                    };
+                    return Comparator.comparing(c -> c.info.contentType);
                 } else {
-                    return new Comparator<ChannelHitList>() {
-                        public int compare(ChannelHitList c1, ChannelHitList c2) {
-                            return c1.info.contentType.compareTo(c2.info.contentType);
-                        }
-                    };
+                    return Comparator.comparing(c -> c.info.contentType);
                 }
             }
         },
         /** */
         BY_GENRE {
+            @Override
             public Comparator<ChannelHitList> getComparator(boolean isDown) {
                 if (isDown) {
-                    return new Comparator<ChannelHitList>() {
-                        public int compare(ChannelHitList c1, ChannelHitList c2) {
-                            return c1.info.genre.compareToIgnoreCase(c2.info.genre);
-                        }
-                    };
+                    return (c1, c2) -> c1.info.genre.compareToIgnoreCase(c2.info.genre);
                 } else {
-                    return new Comparator<ChannelHitList>() {
-                        public int compare(ChannelHitList c1, ChannelHitList c2) {
-                            return c1.info.genre.compareToIgnoreCase(c2.info.genre);
-                        }
-                    };
+                    return (c1, c2) -> c1.info.genre.compareToIgnoreCase(c2.info.genre);
                 }
             }
         };
+
         /** */
         public abstract Comparator<ChannelHitList> getComparator(boolean isDown);
     }
@@ -261,9 +221,15 @@ class Servent {
     static final int DIRECT_WRITE_TIMEOUT = 60 * 1000;
 
     /** */
+    private static boolean isLocal(InetAddress addr) {
+        return addr.isAnyLocalAddress() || addr.isLoopbackAddress() || addr.isLinkLocalAddress() || addr.isSiteLocalAddress();
+    }
+
+    /** */
     boolean isPrivate() {
         InetSocketAddress h = getHost();
-        return serventManager.isFiltered(ServFilter.Type.PRIVATE.value, h) || h.getAddress().isAnyLocalAddress();
+        InetAddress addr = h.getAddress();
+        return serventManager.isFiltered(ServFilter.Type.PRIVATE.value, h) || isLocal(addr);
     }
 
     /** */
@@ -392,7 +358,7 @@ class Servent {
         InetSocketAddress h = new InetSocketAddress((InetAddress) null, 0);
 
         if (sock != null) {
-            h = (InetSocketAddress) sock.getLocalSocketAddress();
+            h = (InetSocketAddress) sock.getRemoteSocketAddress();
         }
 
         return h;
@@ -445,14 +411,14 @@ class Servent {
             this.status = Status.LISTENING;
 
             if (serventManager.isRoot) {
-                log.debug(String.format("Root Server started: %s:%d", host, port));
+                logger.log(Level.DEBUG, String.format("Root Server started: %s:%d", host, port));
             } else {
-                log.debug(String.format("Server started: %s:%d", host, port));
+                logger.log(Level.DEBUG, String.format("Server started: %s:%d", host, port));
             }
 
         } catch (IOException e) {
-e.printStackTrace();
-            log.error(String.format("Bad server: %s", e.getMessage()));
+            logger.log(Level.ERROR, e.getMessage(), e);
+            logger.log(Level.ERROR, String.format("Bad server: %s", e.getMessage()));
             try {
                 kill();
             } catch (IOException e1) {
@@ -472,7 +438,7 @@ e.printStackTrace();
             thread.start();
 
         } catch (Exception e) {
-            log.error(String.format("Unable to start outgoing: %s", e.getMessage()));
+            logger.log(Level.ERROR, String.format("Unable to start outgoing: %s", e.getMessage()));
             try {
                 kill();
             } catch (IOException e1) {
@@ -493,12 +459,12 @@ e.printStackTrace();
             sock.connect(rh);
 
             Thread thread = new Thread(outgoingProc);
-            log.debug(String.format("Outgoing to %s", ipStr));
+            logger.log(Level.DEBUG, String.format("Outgoing to %s", ipStr));
 
             thread.start();
 
         } catch (IOException e) {
-            log.error(String.format("Unable to open connection to %s - %s", ipStr, e.getMessage()));
+            logger.log(Level.ERROR, String.format("Unable to open connection to %s - %s", ipStr, e.getMessage()));
             try {
                 kill();
             } catch (IOException e1) {
@@ -523,7 +489,7 @@ e.printStackTrace();
             thread.start();
 
         } catch (IOException e) {
-            log.error(String.format("GIV error to %s: %s", h.getHostName(), e.getMessage()));
+            logger.log(Level.ERROR, String.format("GIV error to %s: %s", h.getHostName(), e.getMessage()));
             try {
                 kill();
             } catch (IOException e1) {
@@ -562,7 +528,7 @@ e.printStackTrace();
 
         HttpContext response = HttpUtil.postRequest(request);
         if (response.getStatus() != 200) {
-log.error("Expected 200, got " + response.getStatus());
+            logger.log(Level.ERROR, "Expected 200, got " + response.getStatus());
             throw new IOException("Unexpected HTTP response");
         }
 
@@ -572,7 +538,7 @@ log.error("Expected 200, got " + response.getStatus());
         clientID.clear();
 
         for (Map.Entry<String, String> header : response.getHeaders().entrySet()) {
-            log.debug(header);
+            logger.log(Level.DEBUG, header);
 
             if (header.getKey().equals(Peercast.HTTP_HS_AGENT)) {
                 agent = header.getValue();
@@ -616,33 +582,32 @@ log.error("Expected 200, got " + response.getStatus());
             String name = (String) e.nextElement();
             String value = request.getHeader(name);
 
-            if (name.equals(Peercast.HTTP_HS_AGENT)) {
+            switch (name) {
+                case Peercast.HTTP_HS_AGENT -> {
 
-                if (value.toLowerCase().startsWith("peercast/")) {
-                    versionValid = value.substring(9).equalsIgnoreCase(GnuPacket.MIN_CONNECTVER);
-                    diffRootVer = value.substring(9).equalsIgnoreCase(GnuPacket.MIN_ROOTVER);
+                    if (value.toLowerCase().startsWith("peercast/")) {
+                        versionValid = value.substring(9).equalsIgnoreCase(GnuPacket.MIN_CONNECTVER);
+                        diffRootVer = value.substring(9).equalsIgnoreCase(GnuPacket.MIN_ROOTVER);
+                    }
                 }
-            } else if (name.equals(GnuPacket.PCX_HS_NETWORKID)) {
-                clientID = new GnuID(value);
-
-            } else if (name.equals(GnuPacket.PCX_HS_PRIORITY)) {
-                priorityConnect = Integer.parseInt(value) != 0;
-
-            } else if (name.equals(GnuPacket.PCX_HS_ID)) {
-                GnuID id = new GnuID(value);
-                if (id.equals(serventManager.sessionID)) {
-                    throw new IOException("Servent loopback");
+                case GnuPacket.PCX_HS_NETWORKID -> clientID = new GnuID(value);
+                case GnuPacket.PCX_HS_PRIORITY -> priorityConnect = Integer.parseInt(value) != 0;
+                case GnuPacket.PCX_HS_ID -> {
+                    GnuID id = new GnuID(value);
+                    if (id.equals(serventManager.sessionID)) {
+                        throw new IOException("Servent loopback");
+                    }
                 }
-
-            } else if (name.equals(GnuPacket.PCX_HS_OS)) {
-                if (value.equalsIgnoreCase(GnuPacket.PCX_OS_LINUX)) {
-                    osType = 1;
-                } else if (value.equalsIgnoreCase(GnuPacket.PCX_OS_WIN32)) {
-                    osType = 2;
-                } else if (value.equalsIgnoreCase(GnuPacket.PCX_OS_MACOSX)) {
-                    osType = 3;
-                } else if (value.equalsIgnoreCase(GnuPacket.PCX_OS_WINAMP2)) {
-                    osType = 4;
+                case GnuPacket.PCX_HS_OS -> {
+                    if (value.equalsIgnoreCase(GnuPacket.PCX_OS_LINUX)) {
+                        osType = 1;
+                    } else if (value.equalsIgnoreCase(GnuPacket.PCX_OS_WIN32)) {
+                        osType = 2;
+                    } else if (value.equalsIgnoreCase(GnuPacket.PCX_OS_MACOSX)) {
+                        osType = 3;
+                    } else if (value.equalsIgnoreCase(GnuPacket.PCX_OS_WINAMP2)) {
+                        osType = 4;
+                    }
                 }
             }
 
@@ -699,7 +664,7 @@ log.error("Expected 200, got " + response.getStatus());
 
     /** */
     boolean pingHost(InetSocketAddress rhost, GnuID rsid) throws IOException {
-log.debug(String.format("Ping host %s: trying..", rhost.getHostName()));
+        logger.log(Level.DEBUG, String.format("Ping host %s: trying..", rhost.getHostName()));
         Socket socket = null;
         boolean hostOK = false;
 
@@ -729,7 +694,7 @@ log.debug(String.format("Ping host %s: trying..", rhost.getHostName()));
                     }
                 }
             } else {
-                log.debug(String.format("Ping response: %s", id.toString()));
+                logger.log(Level.DEBUG, String.format("Ping response: %s", id.toString()));
                 throw new IOException("Bad ping response");
             }
 
@@ -738,12 +703,12 @@ log.debug(String.format("Ping host %s: trying..", rhost.getHostName()));
             }
 
             hostOK = true;
-log.debug(String.format("Ping host %s: OK", rhost.getHostName()));
+            logger.log(Level.DEBUG, String.format("Ping host %s: OK", rhost.getHostName()));
             atomOut.writeInt(PCPStream.PCP_QUIT, PCPStream.PCP_ERROR_QUIT);
             atomOut.flush();
 
         } catch (IOException e) {
-            log.debug(String.format("Ping host %s: %s", rhost.getHostName(), e.getMessage()));
+            logger.log(Level.DEBUG, String.format("Ping host %s: %s", rhost.getHostName(), e.getMessage()));
         } finally {
             if (socket != null) {
                 socket.close();
@@ -770,24 +735,22 @@ log.debug(String.format("Ping host %s: OK", rhost.getHostName()));
             String name = (String) e.nextElement();
             String value = request.getHeader(name);
 
-            if (name.equals(GnuPacket.PCX_HS_PCP)) {
-                gotPCP = Integer.parseInt(value) != 0;
-            } else if (name.equals(GnuPacket.PCX_HS_POS)) {
-                reqPos = Integer.parseInt(value);
-            } else if (name.equals("icy-metadata")) {
-                addMetadata = Integer.parseInt(value) > 0;
-            } else if (name.equals(Peercast.HTTP_HS_AGENT)) {
-                agent = value;
-            } else if (name.equals("pragma")) {
-                int ssc = value.indexOf("stream-switch-count=");
-                int so = value.indexOf("stream-offset");
+            switch (name) {
+                case GnuPacket.PCX_HS_PCP -> gotPCP = Integer.parseInt(value) != 0;
+                case GnuPacket.PCX_HS_POS -> reqPos = Integer.parseInt(value);
+                case "icy-metadata" -> addMetadata = Integer.parseInt(value) > 0;
+                case Peercast.HTTP_HS_AGENT -> agent = value;
+                case "pragma" -> {
+                    int ssc = value.indexOf("stream-switch-count=");
+                    int so = value.indexOf("stream-offset");
 
-                if (ssc != 0 || so != 0) {
-                    nsSwitchNum = 1;
+                    if (ssc != 0 || so != 0) {
+                        nsSwitchNum = 1;
+                    }
                 }
             }
 
-            // log.debug("Stream: %s", http.cmdLine);
+//logger.log(Level.DEBUG, "Stream: %s".formatted(http.cmdLine));
         }
 
         if (!gotPCP && outputProtocol.equals(ChannelInfo.Protocol.PCP)) {
@@ -796,9 +759,9 @@ log.debug(String.format("Ping host %s: OK", rhost.getHostName()));
 
         if (outputProtocol.equals(ChannelInfo.Protocol.HTTP)) {
             if (chanInfo.srcProtocol.equals(ChannelInfo.Protocol.MMS) ||
-                chanInfo.contentType.equals(ChannelInfo.ContentType.WMA) ||
-                chanInfo.contentType.equals(ChannelInfo.ContentType.WMV) ||
-                chanInfo.contentType.equals(ChannelInfo.ContentType.ASX)) {
+                    chanInfo.contentType.equals(ChannelInfo.ContentType.WMA) ||
+                    chanInfo.contentType.equals(ChannelInfo.ContentType.WMV) ||
+                    chanInfo.contentType.equals(ChannelInfo.ContentType.ASX)) {
                 outputProtocol = ChannelInfo.Protocol.MMS;
             }
         }
@@ -835,12 +798,12 @@ log.debug(String.format("Ping host %s: OK", rhost.getHostName()));
 
         if (!chanFound) {
             response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-            log.debug("Sending channel not found");
+            logger.log(Level.DEBUG, "Sending channel not found");
             return false;
         }
 
         if (!chanReady) {
-Debug.println("outputProtocol: " + outputProtocol);
+            logger.log(Level.TRACE, "outputProtocol: " + outputProtocol);
             if (outputProtocol.equals(ChannelInfo.Protocol.PCP)) {
 
                 response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
@@ -850,7 +813,7 @@ Debug.println("outputProtocol: " + outputProtocol);
 
                 String ripStr = rhost.getHostName();
 
-                log.debug("Sending channel unavailable");
+                logger.log(Level.DEBUG, "Sending channel unavailable");
 
                 ChannelHitSearch chs = new ChannelHitSearch();
 
@@ -865,7 +828,7 @@ Debug.println("outputProtocol: " + outputProtocol);
                         best.init();
 
                         // find best hit this network if local IP
-                        if (rhost.getAddress().isAnyLocalAddress()) {
+                        if (isLocal(rhost.getAddress())) {
                             chs.init();
                             chs.matchHost = serventManager.serverHost;
                             chs.waitDelay = 2;
@@ -905,7 +868,7 @@ Debug.println("outputProtocol: " + outputProtocol);
                     }
 
                     if (cnt != 0) {
-                        log.debug(String.format("Sent %d channel hit(s) to %s", cnt, ripStr));
+                        logger.log(Level.DEBUG, String.format("Sent %d channel hit(s) to %s", cnt, ripStr));
 
                     } else if (rhost.getPort() != 0) {
                         // find firewalled host
@@ -916,14 +879,14 @@ Debug.println("outputProtocol: " + outputProtocol);
                         if (chl.pickHits(chs) != 0) {
                             best = chs.bestHits.get(0);
                             cnt = serventManager.broadcastPushRequest(best, rhost, chl.info.id, Type.RELAY);
-                            log.debug(String.format("Broadcasted channel push request to %d clients for %s", cnt, ripStr));
+                            logger.log(Level.DEBUG, String.format("Broadcasted channel push request to %d clients for %s", cnt, ripStr));
                         }
                     }
 
                     // if all else fails, use tracker
                     if (best.getAddress() == null) {
                         // find best tracker on this network if local IP
-                        if (rhost.getAddress().isAnyLocalAddress()) {
+                        if (isLocal(rhost.getAddress())) {
                             chs.init();
                             chs.matchHost = serventManager.serverHost;
                             chs.trackersOnly = true;
@@ -956,7 +919,7 @@ Debug.println("outputProtocol: " + outputProtocol);
 
                         if (best.getAddress() != null) {
                             best.writeAtoms(atomOut, true, chanInfo.id);
-                            log.debug(String.format("Sent 1 tracker hit to %s", ripStr));
+                            logger.log(Level.DEBUG, String.format("Sent 1 tracker hit to %s", ripStr));
                         } else if (rhost.getPort() != 0) {
                             // find firewalled tracker
                             chs.init();
@@ -967,7 +930,7 @@ Debug.println("outputProtocol: " + outputProtocol);
                             if (chl.pickHits(chs) != 0) {
                                 best = chs.bestHits.get(0);
                                 cnt = serventManager.broadcastPushRequest(best, rhost, chl.info.id, Type.CIN);
-                                log.debug(String.format("Broadcasted tracker push request to %d clients for %s", cnt, ripStr));
+                                logger.log(Level.DEBUG, String.format("Broadcasted tracker push request to %d clients for %s", cnt, ripStr));
                             }
                         }
 
@@ -979,7 +942,7 @@ Debug.println("outputProtocol: " + outputProtocol);
                 result = false;
 
             } else {
-                log.debug("Sending channel unavailable (!channel.ready, pcp)");
+                logger.log(Level.DEBUG, "Sending channel unavailable (!channel.ready, pcp)");
                 response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
                 result = false;
             }
@@ -994,7 +957,7 @@ Debug.println("outputProtocol: " + outputProtocol);
 
                 // GnuPacket.ICY_OK;
 //              response.setProtocol("ICY"); // TODO protocol is icy
-                response.setStatus(200, "OK");
+                response.setStatus(200);
 
                 response.setHeader(Peercast.HTTP_HS_SERVER, GnuPacket.PCX_AGENT);
                 response.setHeader("icy-name", chanInfo.name);
@@ -1011,8 +974,8 @@ Debug.println("outputProtocol: " + outputProtocol);
                 response.setStatus(HttpServletResponse.SC_OK);
 
                 if (!chanInfo.contentType.equals(ChannelInfo.ContentType.ASX) &&
-                    !chanInfo.contentType.equals(ChannelInfo.ContentType.WMV) &&
-                    !chanInfo.contentType.equals(ChannelInfo.ContentType.WMA)) {
+                        !chanInfo.contentType.equals(ChannelInfo.ContentType.WMV) &&
+                        !chanInfo.contentType.equals(ChannelInfo.ContentType.WMA)) {
                     response.setHeader(Peercast.HTTP_HS_SERVER, GnuPacket.PCX_AGENT);
 
                     response.setHeader("Accept-Ranges", "none");
@@ -1027,32 +990,32 @@ Debug.println("outputProtocol: " + outputProtocol);
 
                 if (outputProtocol.equals(ChannelInfo.Protocol.HTTP)) {
                     switch (chanInfo.contentType) {
-                    case OGG:
-                        response.setHeader(Peercast.HTTP_HS_CONTENT, Peercast.MIME_XOGG);
-                        break;
-                    case MP3:
-                        response.setHeader(Peercast.HTTP_HS_CONTENT, Peercast.MIME_MP3);
-                        break;
-                    case MOV:
-                        response.setHeader("Connection", "close");
-                        response.setHeader("Content-Length", "10000000");
-                        response.setHeader(Peercast.HTTP_HS_CONTENT, Peercast.MIME_MOV);
-                        break;
-                    case MPG:
-                        response.setHeader(Peercast.HTTP_HS_CONTENT, Peercast.MIME_MPG);
-                        break;
-                    case NSV:
-                        response.setHeader(Peercast.HTTP_HS_CONTENT, Peercast.MIME_NSV);
-                        break;
-                    case ASX:
-                        response.setHeader(Peercast.HTTP_HS_CONTENT, Peercast.MIME_ASX);
-                        break;
-                    case WMA:
-                        response.setHeader(Peercast.HTTP_HS_CONTENT, Peercast.MIME_WMA);
-                        break;
-                    case WMV:
-                        response.setHeader(Peercast.HTTP_HS_CONTENT, Peercast.MIME_WMV);
-                        break;
+                        case OGG:
+                            response.setHeader(Peercast.HTTP_HS_CONTENT, Peercast.MIME_XOGG);
+                            break;
+                        case MP3:
+                            response.setHeader(Peercast.HTTP_HS_CONTENT, Peercast.MIME_MP3);
+                            break;
+                        case MOV:
+                            response.setHeader("Connection", "close");
+                            response.setHeader("Content-Length", "10000000");
+                            response.setHeader(Peercast.HTTP_HS_CONTENT, Peercast.MIME_MOV);
+                            break;
+                        case MPG:
+                            response.setHeader(Peercast.HTTP_HS_CONTENT, Peercast.MIME_MPG);
+                            break;
+                        case NSV:
+                            response.setHeader(Peercast.HTTP_HS_CONTENT, Peercast.MIME_NSV);
+                            break;
+                        case ASX:
+                            response.setHeader(Peercast.HTTP_HS_CONTENT, Peercast.MIME_ASX);
+                            break;
+                        case WMA:
+                            response.setHeader(Peercast.HTTP_HS_CONTENT, Peercast.MIME_WMA);
+                            break;
+                        case WMV:
+                            response.setHeader(Peercast.HTTP_HS_CONTENT, Peercast.MIME_WMV);
+                            break;
                     }
                 } else if (outputProtocol.equals(ChannelInfo.Protocol.MMS)) {
                     response.setHeader("Server", "Rex/9.0.0.2980");
@@ -1095,7 +1058,7 @@ Debug.println("outputProtocol: " + outputProtocol);
     void handshakeGiv(GnuID id) throws IOException {
         PrintStream ps = new PrintStream(sock.getOutputStream());
         if (id.isSet()) {
-            ps.println("GIV /" + id.toString());
+            ps.println("GIV /" + id);
         } else {
             ps.println("GIV");
         }
@@ -1168,7 +1131,7 @@ Debug.println("outputProtocol: " + outputProtocol);
 
                     if (ret == GnuStream.ResultType.PROCESS) {
 
-                        ret = gnuStream.processPacket(pack, this, routeID);
+                        ret = GnuStream.processPacket(pack, this, routeID);
 
                         if (flowControl && (ret == GnuStream.ResultType.BROADCAST)) {
                             ret = GnuStream.ResultType.DROP;
@@ -1176,44 +1139,44 @@ Debug.println("outputProtocol: " + outputProtocol);
                     }
 
                     switch (ret) {
-                    case BROADCAST:
-                        if (serventManager.broadcast(pack, this) != 0) {
-                            Peercast.getInstance().stats.add(Stats.STAT.NUMBROADCASTED);
-                        } else {
+                        case BROADCAST:
+                            if (serventManager.broadcast(pack, this) != 0) {
+                                Peercast.getInstance().stats.add(Stats.STAT.NUMBROADCASTED);
+                            } else {
+                                Peercast.getInstance().stats.add(Stats.STAT.NUMDROPPED);
+                            }
+                            break;
+                        case ROUTE:
+                            if (serventManager.route(pack, routeID, null) != 0) {
+                                Peercast.getInstance().stats.add(Stats.STAT.NUMROUTED);
+                            } else {
+                                Peercast.getInstance().stats.add(Stats.STAT.NUMDROPPED);
+                            }
+                            break;
+                        case ACCEPTED:
+                            Peercast.getInstance().stats.add(Stats.STAT.NUMACCEPTED);
+                            break;
+                        case DUPLICATE:
+                            Peercast.getInstance().stats.add(Stats.STAT.NUMDUP);
+                            break;
+                        case DEAD:
+                            Peercast.getInstance().stats.add(Stats.STAT.NUMDEAD);
+                            break;
+                        case DISCARD:
+                            Peercast.getInstance().stats.add(Stats.STAT.NUMDISCARDED);
+                            break;
+                        case BADVERSION:
+                            Peercast.getInstance().stats.add(Stats.STAT.NUMOLD);
+                            break;
+                        case DROP:
                             Peercast.getInstance().stats.add(Stats.STAT.NUMDROPPED);
-                        }
-                        break;
-                    case ROUTE:
-                        if (serventManager.route(pack, routeID, null) != 0) {
-                            Peercast.getInstance().stats.add(Stats.STAT.NUMROUTED);
-                        } else {
-                            Peercast.getInstance().stats.add(Stats.STAT.NUMDROPPED);
-                        }
-                        break;
-                    case ACCEPTED:
-                        Peercast.getInstance().stats.add(Stats.STAT.NUMACCEPTED);
-                        break;
-                    case DUPLICATE:
-                        Peercast.getInstance().stats.add(Stats.STAT.NUMDUP);
-                        break;
-                    case DEAD:
-                        Peercast.getInstance().stats.add(Stats.STAT.NUMDEAD);
-                        break;
-                    case DISCARD:
-                        Peercast.getInstance().stats.add(Stats.STAT.NUMDISCARDED);
-                        break;
-                    case BADVERSION:
-                        Peercast.getInstance().stats.add(Stats.STAT.NUMOLD);
-                        break;
-                    case DROP:
-                        Peercast.getInstance().stats.add(Stats.STAT.NUMDROPPED);
-                        break;
+                            break;
                     }
 
-                    log.debug(String.format("packet in: %s-%s, %d bytes, %d hops, %d ttl, v%05x from %s", pack.func, ret, pack.len, pack.hops, pack.ttl, pack.id.getVersion(), ipstr));
+                    logger.log(Level.DEBUG, String.format("packet in: %s-%s, %d bytes, %d hops, %d ttl, v%05x from %s", pack.func, ret, pack.len, pack.hops, pack.ttl, pack.id.getVersion(), ipstr));
 
                 } else {
-                    log.error("Bad packet");
+                    logger.log(Level.ERROR, "Bad packet");
                 }
             }
 
@@ -1273,7 +1236,7 @@ Debug.println("outputProtocol: " + outputProtocol);
             try {
                 Thread.sleep(delay);
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                logger.log(Level.ERROR, e.getMessage(), e);
             }
         }
     }
@@ -1296,7 +1259,7 @@ Debug.println("outputProtocol: " + outputProtocol);
 
                     serventManager.addVersion(ver);
 
-                    log.debug(String.format("packet in: %d v%05x from %s", pack.func, pack.getVersion(), ipstr));
+                    logger.log(Level.DEBUG, String.format("packet in: %d v%05x from %s", pack.func, pack.getVersion(), ipstr));
 
                     if (pack.func.equals(GnuPacket.PING)) { // if ping then pong back some hosts and close
 
@@ -1304,7 +1267,7 @@ Debug.println("outputProtocol: " + outputProtocol);
                         int cnt = serventManager.getNewestServents(hl, 32, (InetSocketAddress) sock.getRemoteSocketAddress());
                         if (cnt != 0) {
                             int start = new Random(lastConnect).nextInt() % cnt;
-                            int max = cnt > 8 ? 8 : cnt;
+                            int max = Math.min(cnt, 8);
 
                             for (int i = 0; i < max; i++) {
                                 pack.hops = 1;
@@ -1313,13 +1276,13 @@ Debug.println("outputProtocol: " + outputProtocol);
 
                                 ipstr = hl[start].getHostName();
 
-                                // log.debug("Pong %d: %s", start + 1, ipstr);
+//logger.log(Level.DEBUG, "Pong %d: %s".formatted(start + 1, ipstr));
                                 start = (start + 1) % cnt;
                             }
                             String str = ((InetSocketAddress) sock.getRemoteSocketAddress()).getHostName();
-                            log.debug(String.format("Sent %d pong(s) to %s", max, str));
+                            logger.log(Level.DEBUG, String.format("Sent %d pong(s) to %s", max, str));
                         } else {
-                            log.debug("No Pongs to send");
+                            logger.log(Level.DEBUG, "No Pongs to send");
                             // return;
                         }
                     } else if (pack.func.equals(GnuPacket.PONG)) { // pong?
@@ -1332,7 +1295,7 @@ Debug.println("outputProtocol: " + outputProtocol);
                         InetSocketAddress h = new InetSocketAddress(InetAddress.getByAddress(Peercast.intToByte(ip)), port);
                         if ((ip != 0) && (port != 0) && (!h.getAddress().isAnyLocalAddress())) {
 
-                            log.debug(String.format("added pong: %d.%d.%d.%d:%d", ip >> 24 & 0xff, ip >> 16 & 0xff, ip >> 8 & 0xff, ip & 0xff, port));
+                            logger.log(Level.DEBUG, String.format("added pong: %d.%d.%d.%d:%d", ip >> 24 & 0xff, ip >> 16 & 0xff, ip >> 8 & 0xff, ip & 0xff, port));
                             serventManager.addHost(h, ServHost.Type.SERVENT, System.currentTimeMillis());
                         }
                     } else if (pack.func.equals(GnuPacket.HIT)) {
@@ -1341,8 +1304,8 @@ Debug.println("outputProtocol: " + outputProtocol);
                         GnuStream.readHit(data, hit, pack.hops, pack.id);
                     }
 
-                    // if (gnuStream.packetsIn > 5) // die if we get too many packets
-                    // return;
+//                     if (gnuStream.packetsIn > 5) // die if we get too many packets
+//                         return;
                 }
 
                 if ((System.currentTimeMillis() - lastConnect > 60)) {
@@ -1351,13 +1314,14 @@ Debug.println("outputProtocol: " + outputProtocol);
             }
 
         } catch (IOException e) {
-            log.error(String.format("Relay: %s", e.getMessage()));
+            logger.log(Level.ERROR, String.format("Relay: %s", e.getMessage()));
         }
 
     }
 
     /** */
-    private Runnable givProc = new Runnable() {
+    private final Runnable givProc = new Runnable() {
+        @Override
         public void run() {
             Servent servent = serventManager.allocServent();
             try {
@@ -1366,7 +1330,7 @@ Debug.println("outputProtocol: " + outputProtocol);
 
                 servent.kill();
             } catch (IOException e) {
-                log.error(String.format("GIV: %s", e.getMessage()));
+                logger.log(Level.ERROR, String.format("GIV: %s", e.getMessage()));
             }
         }
     };
@@ -1374,7 +1338,7 @@ Debug.println("outputProtocol: " + outputProtocol);
     /** */
     static void handshakeOutgoingPCP(AtomInputStream atomIn, AtomOutputStream atomOut, InetSocketAddress rhost, GnuID rid, String agent, boolean isTrusted) throws IOException {
 
-        ServentManager serventManager = Singleton.getInstance(ServentManager.class);
+        ServentManager serventManager = Peercast.serventManager;
 
         boolean nonFW = serventManager.getFirewall() != ServentManager.FirewallState.ON;
         boolean testFW = serventManager.getFirewall() == ServentManager.FirewallState.UNKNOWN;
@@ -1391,14 +1355,14 @@ Debug.println("outputProtocol: " + outputProtocol);
         }
         atomOut.flush();
 
-log.debug("PCP outgoing waiting for OLEH.. ");
+        logger.log(Level.DEBUG, "PCP outgoing waiting for OLEH.. ");
 
         ID4 id = atomIn.read();
         int numc = atomIn.childCount;
         int numd = atomIn.dataLength;
-//Debug.println("id: " + id + ", numc: " + numc + ", numd: " + numd);
+//logger.log(Level.TRACE, "id: " + id + ", numc: " + numc + ", numd: " + numd);
         if (!id.equals(PCPStream.PCP_OLEH)) {
-log.debug(String.format("PCP outgoing reply: %s", id.toString()));
+            logger.log(Level.DEBUG, String.format("PCP outgoing reply: %s", id));
             atomOut.writeInt(PCPStream.PCP_QUIT, PCPStream.PCP_ERROR_QUIT | PCPStream.PCP_ERROR_BADRESPONSE);
             atomOut.flush();
             throw new IOException("Got unexpected PCP response");
@@ -1413,7 +1377,7 @@ log.debug(String.format("PCP outgoing reply: %s", id.toString()));
         // read OLEH response
         for (int i = 0; i < numc; i++) {
             id = atomIn.read();
-//Debug.println("id: " + id + ", numc: " + atomIn.childCount + ", numd: " + atomIn.dataLength);
+//logger.log(Level.TRACE, "id: " + id + ", numc: " + atomIn.childCount + ", numd: " + atomIn.dataLength);
 
             if (id.equals(PCPStream.PCP_HELO_AGENT)) {
                 String arg = atomIn.readString(atomIn.dataLength, atomIn.dataLength);
@@ -1421,29 +1385,29 @@ log.debug(String.format("PCP outgoing reply: %s", id.toString()));
 
             } else if (id.equals(PCPStream.PCP_HELO_REMOTEIP)) {
                 byte[] address = Peercast.intToByte(atomIn.readInt());
-//Debug.println("address: " + (address[0] & 0xff) + "." + (address[1] & 0xff) + "." + (address[2] & 0xff) + "." + (address[3] & 0xff));
+//logger.log(Level.TRACE, "address: " + (address[0] & 0xff) + "." + (address[1] & 0xff) + "." + (address[2] & 0xff) + "." + (address[3] & 0xff));
                 thisAddress = InetAddress.getByAddress(address);
-//Debug.println("thisAddress: " + thisAddress);
+//logger.log(Level.TRACE, "thisAddress: " + thisAddress);
 
             } else if (id.equals(PCPStream.PCP_HELO_PORT)) {
                 int port = atomIn.readShort();
-//Debug.println("port: " + port);
+//logger.log(Level.TRACE, "port: " + port);
                 thisHost = new InetSocketAddress(thisAddress, port);
-//Debug.println("thisHost: " + thisHost);
+//logger.log(Level.TRACE, "thisHost: " + thisHost);
 
             } else if (id.equals(PCPStream.PCP_HELO_VERSION)) {
                 int version = atomIn.readInt();
-//Debug.println("version: " + version);
+//logger.log(Level.TRACE, "version: " + version);
 
             } else if (id.equals(PCPStream.PCP_HELO_SESSIONID)) {
                 atomIn.readBytes(rid.id, 16);
                 if (rid.equals(serventManager.sessionID)) {
                     throw new IOException("Servent loopback");
                 }
-//Debug.println("rid: " + rid);
+//logger.log(Level.TRACE, "rid: " + rid);
 
             } else {
-                log.debug(String.format("PCP handshake skip: %s", id.toString()));
+                logger.log(Level.DEBUG, String.format("PCP handshake skip: %s", id));
                 atomIn.skip(atomIn.childCount, atomIn.dataLength);
             }
 
@@ -1452,9 +1416,9 @@ log.debug(String.format("PCP outgoing reply: %s", id.toString()));
         // update server ip/firewall status
         if (isTrusted) {
             if (thisHost != null) {
-                if (!serventManager.serverHost.getAddress().equals(thisHost.getAddress()) && serventManager.forceIP.length() == 0) {
+                if (!serventManager.serverHost.getAddress().equals(thisHost.getAddress()) && serventManager.forceIP.isEmpty()) {
                     String ipstr = thisHost.getHostName();
-                    log.debug(String.format("Got new ip: %s", ipstr));
+                    logger.log(Level.DEBUG, String.format("Got new ip: %s", ipstr));
                     serventManager.serverHost = new InetSocketAddress(thisHost.getAddress(), serventManager.serverHost.getPort());
                 }
 
@@ -1474,7 +1438,7 @@ log.debug(String.format("PCP outgoing reply: %s", id.toString()));
             throw new IOException("Remote host not identified");
         }
 
-        log.debug("PCP Outgoing handshake complete.");
+        logger.log(Level.DEBUG, "PCP Outgoing handshake complete.");
     }
 
     /** */
@@ -1485,7 +1449,7 @@ log.debug(String.format("PCP outgoing reply: %s", id.toString()));
 //      int numd = atomIn.numData;
 
         if (id != PCPStream.PCP_HELO) {
-            log.debug(String.format("PCP incoming reply: %s", id.toString()));
+            logger.log(Level.DEBUG, String.format("PCP incoming reply: %s", id.toString()));
             atomOut.writeInt(PCPStream.PCP_QUIT, PCPStream.PCP_ERROR_QUIT + PCPStream.PCP_ERROR_BADRESPONSE);
             throw new IOException("Got unexpected PCP response");
         }
@@ -1519,24 +1483,24 @@ log.debug(String.format("PCP outgoing reply: %s", id.toString()));
             } else if (id.equals(PCPStream.PCP_HELO_PING)) {
                 pingPort = atomIn.readShort();
             } else {
-                log.debug(String.format("PCP handshake skip: %s", id.toString()));
+                logger.log(Level.DEBUG, String.format("PCP handshake skip: %s", id));
                 atomIn.skip(atomIn.childCount, atomIn.dataLength);
             }
 
         }
 
         if (version != 0) {
-            log.debug(String.format("Incoming PCP is %s : v%d", agent, version));
+            logger.log(Level.DEBUG, String.format("Incoming PCP is %s : v%d", agent, version));
         }
 
-        if (rhost.getAddress().isAnyLocalAddress() && serventManager.serverHost.getAddress().isAnyLocalAddress())
+        if (isLocal(rhost.getAddress()) && serventManager.serverHost.getAddress().isAnyLocalAddress())
             rhost = new InetSocketAddress(rhost.getAddress(), serventManager.serverHost.getPort());
 
         if (pingPort != 0) {
             String ripStr = rhost.getHostName();
-            log.debug(String.format("Incoming firewalled test request: %s ", ripStr));
+            logger.log(Level.DEBUG, String.format("Incoming firewalled test request: %s ", ripStr));
             rhost = new InetSocketAddress(rhost.getAddress(), pingPort);
-            if (rhost.getAddress().isAnyLocalAddress() || !pingHost(rhost, rid)) {
+            if (isLocal(rhost.getAddress()) || !pingHost(rhost, rid)) {
                 rhost = new InetSocketAddress(rhost.getAddress(), 0);
             }
         }
@@ -1564,7 +1528,7 @@ log.debug(String.format("PCP outgoing reply: %s", id.toString()));
             serventManager.writeRootAtoms(atomOut, false);
         }
 
-        log.debug("PCP Incoming handshake complete.");
+        logger.log(Level.DEBUG, "PCP Incoming handshake complete.");
     }
 
     /** */
@@ -1605,7 +1569,7 @@ log.debug(String.format("PCP outgoing reply: %s", id.toString()));
                     best.init();
 
                     // find best hit on this network
-                    if (rhost.getAddress().isAnyLocalAddress()) {
+                    if (isLocal(rhost.getAddress())) {
                         chs.init();
                         chs.matchHost = serventManager.serverHost;
                         chs.waitDelay = 2;
@@ -1652,7 +1616,7 @@ log.debug(String.format("PCP outgoing reply: %s", id.toString()));
                     cnt++;
                 }
                 if (cnt != 0) {
-                    log.debug(String.format("Sent %d tracker(s) to %s", cnt, rstr));
+                    logger.log(Level.DEBUG, String.format("Sent %d tracker(s) to %s", cnt, rstr));
                 } else if (rhost.getPort() != 0) {
                     // send push request to best firewalled tracker on other network
                     chs.init();
@@ -1666,12 +1630,12 @@ log.debug(String.format("PCP outgoing reply: %s", id.toString()));
                         GnuID noID = new GnuID();
                         noID.clear();
                         cnt = serventManager.broadcastPushRequest(best, rhost, noID, Type.CIN);
-                        log.debug(String.format("Broadcasted tracker push request to %d clients for %s", cnt, rstr));
+                        logger.log(Level.DEBUG, String.format("Broadcasted tracker push request to %d clients for %s", cnt, rstr));
                     }
                 }
             }
 
-            log.error(String.format("Sending QUIT to incoming: %d", error));
+            logger.log(Level.ERROR, String.format("Sending QUIT to incoming: %d", error));
 
             atom.writeInt(PCPStream.PCP_QUIT, error);
             return;
@@ -1710,13 +1674,14 @@ log.debug(String.format("PCP outgoing reply: %s", id.toString()));
         error += PCPStream.PCP_ERROR_QUIT;
         atom.writeInt(PCPStream.PCP_QUIT, error);
 
-        log.debug(String.format("PCP Incoming to %s closed: %d", rstr, error));
+        logger.log(Level.DEBUG, String.format("PCP Incoming to %s closed: %d", rstr, error));
     }
 
     /** */
-    private Runnable outgoingProc = new Runnable() {
+    private final Runnable outgoingProc = new Runnable() {
+        @Override
         public void run() {
-            log.debug("COUT started");
+            logger.log(Level.DEBUG, "COUT started");
 
             GnuID noID = new GnuID();
             pcpStream = new PCPStream(noID);
@@ -1730,7 +1695,7 @@ log.debug(String.format("PCP outgoing reply: %s", id.toString()));
                 do {
                     bestHit.init();
 
-                    if (serventManager.rootHost.length() == 0) {
+                    if (serventManager.rootHost.isEmpty()) {
                         break;
                     }
 
@@ -1759,7 +1724,7 @@ log.debug(String.format("PCP outgoing reply: %s", id.toString()));
                             chl.pickHits(chs);
                         }
 
-                        if (chs.bestHits.size() != 0) {
+                        if (!chs.bestHits.isEmpty()) {
                             bestHit = chs.bestHits.get(0);
                         }
                     }
@@ -1779,7 +1744,7 @@ log.debug(String.format("PCP outgoing reply: %s", id.toString()));
                 } while (bestHit.getAddress() == null);
 
                 if (bestHit.getAddress() == null) { // give up
-                    log.error("COUT giving up");
+                    logger.log(Level.ERROR, "COUT giving up");
                     return;
                 }
 
@@ -1788,7 +1753,7 @@ log.debug(String.format("PCP outgoing reply: %s", id.toString()));
                 int error = 0;
                 try {
 
-                    log.debug(String.format("COUT to %s: Connecting..", bestHitHostName));
+                    logger.log(Level.DEBUG, String.format("COUT to %s: Connecting..", bestHitHostName));
 
                     if (sock == null) {
                         setStatus(Status.CONNECTING);
@@ -1808,7 +1773,7 @@ log.debug(String.format("PCP outgoing reply: %s", id.toString()));
 
                     setStatus(Status.CONNECTED);
 
-                    log.debug(String.format("COUT to %s: OK", bestHitHostName));
+                    logger.log(Level.DEBUG, String.format("COUT to %s: OK", bestHitHostName));
 
                     pcpStream.init(remoteID);
 
@@ -1842,13 +1807,13 @@ log.debug(String.format("PCP outgoing reply: %s", id.toString()));
                     error += PCPStream.PCP_ERROR_QUIT;
                     atomOut.writeInt(PCPStream.PCP_QUIT, error);
 
-                    log.error(String.format("COUT to %s closed: %d", bestHitHostName, error));
+                    logger.log(Level.ERROR, String.format("COUT to %s closed: %d", bestHitHostName, error));
 
                     // } catch (TimeoutException e) {
-                    // log.error(String.format("COUT to %s: timeout (%s)", ipStr, e.getMessage()));
+                    // logger.log(Level.ERROR, String.format("COUT to %s: timeout (%s)", ipStr, e.getMessage()));
                     // sv.setStatus(STATUS.S_TIMEOUT);
                 } catch (IOException e) {
-                    log.error(String.format("COUT to %s: %s", bestHitHostName, e.getMessage()));
+                    logger.log(Level.ERROR, String.format("COUT to %s: %s", bestHitHostName, e.getMessage()));
                     setStatus(Status.ERROR);
                 }
 
@@ -1877,7 +1842,7 @@ log.debug(String.format("PCP outgoing reply: %s", id.toString()));
                 kill();
             } catch (IOException e) {
             }
-            log.debug("COUT ended");
+            logger.log(Level.DEBUG, "COUT ended");
         }
     };
 
@@ -1908,7 +1873,7 @@ log.debug(String.format("PCP outgoing reply: %s", id.toString()));
 
             chanID = chanInfo.id;
 
-            log.debug(String.format("Sending channel: %s ", outputProtocol.name()));
+            logger.log(Level.DEBUG, String.format("Sending channel: %s ", outputProtocol.name()));
 
             if (!waitForChannelHeader(request, chanInfo)) {
                 throw new IOException("Channel not ready");
@@ -1961,9 +1926,6 @@ log.debug(String.format("PCP outgoing reply: %s", id.toString()));
                 return true;
             }
 
-            if (request.getInputStream().available() > 0) {
-                break;
-            }
             try {
                 Thread.sleep(100);
             } catch (InterruptedException e) {
@@ -1975,7 +1937,7 @@ log.debug(String.format("PCP outgoing reply: %s", id.toString()));
     /** */
     private void sendRawChannel(HttpServletRequest request, HttpServletResponse response, boolean sendHead, boolean sendData) {
         try {
-Debug.println("head: " + sendHead + ", body: " + sendData);
+            logger.log(Level.TRACE, "head: " + sendHead + ", body: " + sendData);
             sock.setSoTimeout(DIRECT_WRITE_TIMEOUT);
 
             Channel ch = channelManager.findChannelByID(chanID);
@@ -1985,12 +1947,12 @@ Debug.println("head: " + sendHead + ", body: " + sendData);
 
             setStatus(Status.CONNECTED);
 
-            log.debug(String.format("Starting Raw stream of %s at %d", ch.info.name, streamPos));
+            logger.log(Level.DEBUG, String.format("Starting Raw stream of %s at %d", ch.info.name, streamPos));
 
             if (sendHead) {
                 ch.headPack.writeRaw(response.getOutputStream());
                 streamPos = ch.headPack.pos + ch.headPack.data.length;
-                log.debug(String.format("Sent %d bytes header ", ch.headPack.data.length));
+                logger.log(Level.DEBUG, String.format("Sent %d bytes header ", ch.headPack.data.length));
             }
 
             if (sendData) {
@@ -1999,7 +1961,7 @@ Debug.println("head: " + sendHead + ", body: " + sendData);
                 long connectTime = System.currentTimeMillis();
                 long lastWriteTime = connectTime;
 
-                while (request.getInputStream().available() > 0) {
+                while (!sock.isClosed() && !sock.isInputShutdown() && !Peercast.getInstance().isQuitting) {
                     ch = channelManager.findChannelByID(chanID);
 
                     if (ch != null) {
@@ -2007,24 +1969,24 @@ Debug.println("head: " + sendHead + ", body: " + sendData);
                         if (streamIndex != ch.streamIndex) {
                             streamIndex = ch.streamIndex;
                             streamPos = ch.headPack.pos;
-                            log.debug("sendRaw got new stream index");
+                            logger.log(Level.DEBUG, "sendRaw got new stream index");
                         }
 
                         ChannelPacket rawPack = ch.rawData.findPacket(streamPos);
-                        if (rawPack!= null) {
+                        if (rawPack != null) {
                             if (syncPos != rawPack.sync) {
-                                log.error(String.format("Send skip: %d", rawPack.sync - syncPos));
+                                logger.log(Level.ERROR, String.format("Send skip: %d", rawPack.sync - syncPos));
                             }
                             syncPos = rawPack.sync + 1;
 
                             if (rawPack.type.equals(ChannelPacket.Type.DATA) ||
-                                rawPack.type.equals(ChannelPacket.Type.HEAD)) {
+                                    rawPack.type.equals(ChannelPacket.Type.HEAD)) {
                                 rawPack.writeRaw(response.getOutputStream());
                                 lastWriteTime = System.currentTimeMillis();
                             }
 
                             if (rawPack.pos < streamPos) {
-                                log.debug(String.format("raw: skip back %d", rawPack.pos - streamPos));
+                                logger.log(Level.DEBUG, String.format("raw: skip back %d", rawPack.pos - streamPos));
                             }
                             streamPos = rawPack.pos + rawPack.data.length;
                         }
@@ -2041,7 +2003,7 @@ Debug.println("head: " + sendHead + ", body: " + sendData);
                 }
             }
         } catch (IOException e) {
-            log.error(String.format("Stream channel: %s", e.getMessage()));
+            logger.log(Level.ERROR, String.format("Stream channel: %s", e.getMessage()));
         }
     }
 
@@ -2064,11 +2026,11 @@ Debug.println("head: " + sendHead + ", body: " + sendData);
                 for (int i = 0; i < numChanIDs; i++) {
                     Channel ch = channelManager.findChannelByID(chanIDs[i]);
                     if (ch != null) {
-                        log.debug(String.format("Starting RawMulti stream: %s", ch.info.name));
+                        logger.log(Level.DEBUG, String.format("Starting RawMulti stream: %s", ch.info.name));
                         ch.headPack.writeRaw(sock.getOutputStream());
                         chanStreamPos[i] = ch.headPack.pos + ch.headPack.data.length;
                         chanStreamIndex[i] = ch.streamIndex;
-                        log.debug(String.format("Sent %d bytes header", ch.headPack.data.length));
+                        logger.log(Level.DEBUG, String.format("Sent %d bytes header", ch.headPack.data.length));
 
                     }
                 }
@@ -2078,7 +2040,7 @@ Debug.println("head: " + sendHead + ", body: " + sendData);
 
                 long connectTime = System.currentTimeMillis();
 
-                while (sock.getInputStream().available() > 0) {
+                while (!sock.isClosed() && !sock.isInputShutdown() && !Peercast.getInstance().isQuitting) {
 
                     for (int i = 1; i < numChanIDs; i++) {
                         Channel ch = channelManager.findChannelByID(chanIDs[i]);
@@ -2086,18 +2048,18 @@ Debug.println("head: " + sendHead + ", body: " + sendData);
                             if (chanStreamIndex[i] != ch.streamIndex) {
                                 chanStreamIndex[i] = ch.streamIndex;
                                 chanStreamPos[i] = ch.headPack.pos;
-                                log.debug(String.format("sendRawMulti got new stream index for chan %d", i));
+                                logger.log(Level.DEBUG, String.format("sendRawMulti got new stream index for chan %d", i));
                             }
 
                             ChannelPacket rawPack = ch.rawData.findPacket(chanStreamPos[i]);
                             if (rawPack != null) {
                                 if (rawPack.type.equals(ChannelPacket.Type.DATA) ||
-                                    rawPack.type.equals(ChannelPacket.Type.HEAD)) {
+                                        rawPack.type.equals(ChannelPacket.Type.HEAD)) {
                                     rawPack.writeRaw(sock.getOutputStream());
                                 }
 
                                 if (rawPack.pos < chanStreamPos[i]) {
-                                    log.debug(String.format("raw: skip back %d", rawPack.pos - chanStreamPos[i]));
+                                    logger.log(Level.DEBUG, String.format("raw: skip back %d", rawPack.pos - chanStreamPos[i]));
                                 }
                                 chanStreamPos[i] = rawPack.pos + rawPack.data.length;
 
@@ -2113,7 +2075,7 @@ Debug.println("head: " + sendHead + ", body: " + sendData);
                 }
             }
         } catch (IOException e) {
-            log.error(String.format("Stream channel: %s", e.getMessage()));
+            logger.log(Level.ERROR, String.format("Stream channel: %s", e.getMessage()));
         }
     }
 
@@ -2132,7 +2094,7 @@ Debug.println("head: " + sendHead + ", body: " + sendData);
 
             setStatus(Status.CONNECTED);
 
-            log.debug(String.format("Starting Raw Meta stream of %s (metaint: %d) at %d", ch.info.name, interval, streamPos));
+            logger.log(Level.DEBUG, String.format("Starting Raw Meta stream of %s (metaint: %d) at %d", ch.info.name, interval, streamPos));
 
             String lastTitle = null, lastURL = null;
 
@@ -2150,7 +2112,7 @@ Debug.println("head: " + sendHead + ", body: " + sendData);
 
             streamPos = 0; // raw meta channel has no header (its MP3)
 
-            while (sock.getInputStream().available() > 0) {
+            while (!sock.isClosed() && !sock.isInputShutdown() && !Peercast.getInstance().isQuitting) {
                 ch = channelManager.findChannelByID(chanID);
 
                 if (ch != null) {
@@ -2159,7 +2121,7 @@ Debug.println("head: " + sendHead + ", body: " + sendData);
                     if (rawPack != null) {
 
                         if (syncPos != rawPack.sync) {
-                            log.error(String.format("Send skip: %d", rawPack.sync - syncPos));
+                            logger.log(Level.ERROR, String.format("Send skip: %d", rawPack.sync - syncPos));
                         }
                         syncPos = rawPack.sync + 1;
 
@@ -2192,7 +2154,7 @@ Debug.println("head: " + sendHead + ", body: " + sendData);
                                     }
 
                                     String metaTitle = ch.info.track.title;
-                                    if (ch.info.comment.length() != 0 && (showMsg)) {
+                                    if (!ch.info.comment.isEmpty() && (showMsg)) {
                                         metaTitle = ch.info.comment;
                                     }
 
@@ -2212,7 +2174,7 @@ Debug.println("head: " + sendHead + ", body: " + sendData);
                                         lastTitle = metaTitle;
                                         lastURL = ch.info.url;
 
-                                        log.debug(String.format("StreamTitle: %s, StreamURL: %s", lastTitle, lastURL));
+                                        logger.log(Level.DEBUG, String.format("StreamTitle: %s, StreamURL: %s", lastTitle, lastURL));
 
                                     } else {
                                         sock.getOutputStream().write(0);
@@ -2235,7 +2197,7 @@ Debug.println("head: " + sendHead + ", body: " + sendData);
 
             }
         } catch (IOException e) {
-            log.error(String.format("Stream channel: %s", e.getMessage()));
+            logger.log(Level.ERROR, String.format("Stream channel: %s", e.getMessage()));
         }
     }
 
@@ -2249,7 +2211,7 @@ Debug.println("head: " + sendHead + ", body: " + sendData);
                 throw new IOException("Channel not found");
             }
 
-            log.debug(String.format("Starting PeerCast stream: %s", ch.info.name));
+            logger.log(Level.DEBUG, String.format("Starting PeerCast stream: %s", ch.info.name));
 
             DataOutputStream dos = new DataOutputStream(sock.getOutputStream());
             dos.write("PCST".getBytes());
@@ -2270,7 +2232,7 @@ Debug.println("head: " + sendHead + ", body: " + sendData);
                     ChannelPacket rawPack = ch.rawData.findPacket(streamPos);
                     if (rawPack != null) {
                         if (rawPack.type.equals(ChannelPacket.Type.DATA) ||
-                            rawPack.type.equals(ChannelPacket.Type.HEAD)) {
+                                rawPack.type.equals(ChannelPacket.Type.HEAD)) {
                             dos.write("SYNC".getBytes());
                             dos.writeShort(4);
                             dos.writeShort(0);
@@ -2289,7 +2251,7 @@ Debug.println("head: " + sendHead + ", body: " + sendData);
             }
 
         } catch (IOException e) {
-            log.error(String.format("Stream channel: %s", e.getMessage()));
+            logger.log(Level.ERROR, String.format("Stream channel: %s", e.getMessage()));
         }
     }
 
@@ -2307,7 +2269,7 @@ Debug.println("head: " + sendHead + ", body: " + sendData);
 
         try {
 
-            log.debug(String.format("Starting PCP stream of channel at %d", streamPos));
+            logger.log(Level.DEBUG, String.format("Starting PCP stream of channel at %d", streamPos));
 
             setStatus(Status.CONNECTED);
 
@@ -2322,7 +2284,7 @@ Debug.println("head: " + sendHead + ", body: " + sendData);
                 atom.writeBytes(PCPStream.PCP_CHAN_PKT_DATA, ch.headPack.data, ch.headPack.data.length);
 
                 streamPos = ch.headPack.pos + ch.headPack.data.length;
-                log.debug(String.format("Sent %d bytes header", ch.headPack.data.length));
+                logger.log(Level.DEBUG, String.format("Sent %d bytes header", ch.headPack.data.length));
             }
 
             int streamIndex = ch.streamIndex;
@@ -2336,7 +2298,7 @@ Debug.println("head: " + sendHead + ", body: " + sendData);
                     if (streamIndex != ch.streamIndex) {
                         streamIndex = ch.streamIndex;
                         streamPos = ch.headPack.pos;
-                        log.debug("sendPCPStream got new stream index");
+                        logger.log(Level.DEBUG, "sendPCPStream got new stream index");
                     }
 
                     ChannelPacket rawPack = ch.rawData.findPacket(streamPos);
@@ -2362,7 +2324,7 @@ Debug.println("head: " + sendHead + ", body: " + sendData);
                         }
 
                         if (rawPack.pos < streamPos) {
-                            log.debug(String.format("pcp: skip back %d", rawPack.pos - streamPos));
+                            logger.log(Level.DEBUG, String.format("pcp: skip back %d", rawPack.pos - streamPos));
                         }
 
                         streamPos = rawPack.pos + rawPack.data.length;
@@ -2382,7 +2344,7 @@ Debug.println("head: " + sendHead + ", body: " + sendData);
             }
 
         } catch (IOException e) {
-            log.error(String.format("Stream channel: %s", e.getMessage()));
+            logger.log(Level.ERROR, String.format("Stream channel: %s", e.getMessage()));
         }
 
         try {
@@ -2390,52 +2352,50 @@ Debug.println("head: " + sendHead + ", body: " + sendData);
         } catch (IOException e) {
         }
 
-        log.debug("PCP channel stream closed normally.");
+        logger.log(Level.DEBUG, "PCP channel stream closed normally.");
     }
 
     /** serverProc */
-    private SocketHandlerFactory serverProc = new SocketHandlerFactory() {
-        /** */
-        public Runnable getSocketHandler(final Socket socket) {
-            return new Runnable() {
-                public void run() {
-Debug.println("socket: " + socket);
-                    try {
-                        if (serventManager.numActiveOnPort(((InetSocketAddress) socket.getLocalSocketAddress()).getPort()) < serventManager.maxServIn) {
-                            log.debug("accepted incoming");
-                            Servent ns = serventManager.allocServent();
-                            serventManager.lastIncoming = System.currentTimeMillis();
-                            ns.servPort = ((InetSocketAddress) socket.getLocalSocketAddress()).getPort();
-                            ns.networkID = serventManager.networkID;
+    private final SocketHandlerFactory serverProc = new SocketHandlerFactory() {
+        @Override
+        public Runnable getSocketHandler(Socket socket) {
+            return () -> {
+                logger.log(Level.TRACE, "socket: " + socket);
+                try {
+                    if (serventManager.numActiveOnPort(((InetSocketAddress) socket.getLocalSocketAddress()).getPort()) < serventManager.maxServIn) {
+                        logger.log(Level.DEBUG, "accepted incoming");
+                        Servent ns = serventManager.allocServent();
+                        serventManager.lastIncoming = System.currentTimeMillis();
+                        ns.servPort = ((InetSocketAddress) socket.getLocalSocketAddress()).getPort();
+                        ns.networkID = serventManager.networkID;
 
-                            // initIncoming()
-                            ns.type = Type.INCOMING;
-                            ns.sock = socket;
-                            ns.allow = allow;
-                            ns.setStatus(Status.PROTOCOL);
-                            log.debug("Incoming from " + socket.getRemoteSocketAddress());
+                        // initIncoming()
+                        ns.type = Type.INCOMING;
+                        ns.sock = socket;
+                        ns.allow = allow;
+                        ns.setStatus(Status.PROTOCOL);
+                        logger.log(Level.DEBUG, "Incoming from " + socket.getRemoteSocketAddress());
 
-                            ns.handshakeIncoming();
-                        }
-                    } catch (Exception e) {
-Debug.printStackTrace(e);
-                        try {
-                            kill();
-                        } catch (IOException f) {
-                            f.printStackTrace();
-                        }
-                        log.error("Server Error: " + e.getMessage());
-                    } finally {
-//                        log.debug("Server stopped");
-Debug.println("one request done");
+                        ns.handshakeIncoming();
                     }
+                } catch (Exception e) {
+                    logger.log(Level.TRACE, e);
+                    try {
+                        kill();
+                    } catch (IOException f) {
+                        logger.log(Level.ERROR, f.getMessage(), f);
+                    }
+                    logger.log(Level.ERROR, "Server Error: " + e.getMessage());
+                } finally {
+//                        logger.log(Level.DEBUG, "Server stopped");
+                    logger.log(Level.TRACE, "one request done");
                 }
             };
         }
     };
 
     /** */
-    boolean writeVariable(OutputStream s, final String var) throws IOException {
+    boolean writeVariable(OutputStream s, String var) throws IOException {
         String buf;
 
         if (var.equals("type")) {
@@ -2458,33 +2418,30 @@ Debug.println("one request done");
         } else if (var.startsWith("gnet.")) {
 
             float ctime = (System.currentTimeMillis() - lastConnect);
-            if (var == "gnet.packetsIn") {
-                buf = String.format("%d", gnuStream.packetsIn);
-            } else if (var.equals("gnet.packetsInPerSec")) {
-                buf = String.format("%.1f", ctime > 0 ? gnuStream.packetsIn / ctime : 0);
-            } else if (var.equals("gnet.packetsOut")) {
-                buf = String.format("%d", gnuStream.packetsOut);
-            } else if (var.equals("gnet.packetsOutPerSec")) {
-                buf = String.format("%.1f", ctime > 0 ? gnuStream.packetsOut / ctime : 0);
-            } else if (var.equals("gnet.normQueue")) {
-                buf = String.format("%d", outPacketsNorm.numPending());
-            } else if (var.equals("gnet.priQueue")) {
-                buf = String.format("%d", outPacketsPri.numPending());
-            } else if (var.equals("gnet.flowControl")) {
-                buf = String.format("%d", flowControl ? 1 : 0);
-            } else if (var.equals("gnet.routeTime")) {
-                int nr = numUsed();
-                long tim = System.currentTimeMillis() - getOldest();
+            switch (var) {
+                case "gnet.packetsIn" -> buf = String.format("%d", gnuStream.packetsIn);
+                case "gnet.packetsInPerSec" -> buf = String.format("%.1f", ctime > 0 ? gnuStream.packetsIn / ctime : 0);
+                case "gnet.packetsOut" -> buf = String.format("%d", gnuStream.packetsOut);
+                case "gnet.packetsOutPerSec" ->
+                        buf = String.format("%.1f", ctime > 0 ? gnuStream.packetsOut / ctime : 0);
+                case "gnet.normQueue" -> buf = String.format("%d", outPacketsNorm.numPending());
+                case "gnet.priQueue" -> buf = String.format("%d", outPacketsPri.numPending());
+                case "gnet.flowControl" -> buf = String.format("%d", flowControl ? 1 : 0);
+                case "gnet.routeTime" -> {
+                    int nr = numUsed();
+                    long tim = System.currentTimeMillis() - getOldest();
 
-                String tstr = Peercast.getFromStopwatch((int) (tim / 1000));
+                    String tstr = Peercast.getFromStopwatch((int) (tim / 1000));
 
-                if (nr != 0) {
-                    buf = tstr;
-                } else {
-                    buf = "-";
+                    if (nr != 0) {
+                        buf = tstr;
+                    } else {
+                        buf = "-";
+                    }
                 }
-            } else {
-                return false;
+                default -> {
+                    return false;
+                }
             }
 
         } else {
@@ -2499,10 +2456,10 @@ Debug.println("one request done");
     /** */
     long getOldest() {
         long t = -1;
-        for (int i = 0; i < seenIDs.size(); i++) {
-            if (seenIDs.get(i).storeTime > 0) {
-                if (seenIDs.get(i).storeTime < t) {
-                    t = seenIDs.get(i).storeTime;
+        for (GnuID seenID : seenIDs) {
+            if (seenID.storeTime > 0) {
+                if (seenID.storeTime < t) {
+                    t = seenID.storeTime;
                 }
             }
         }
@@ -2530,11 +2487,11 @@ Debug.println("one request done");
     }
 
     void writeOK(String type) {
-        // out.writeLine(HTTP_SC_OK);
-        // out.writeLine("%s %s", HTTP_HS_SERVER, PCX_AGENT);
-        // out.writeLine("%s %s", HTTP_HS_CONNECTION, "close");
-        // out.writeLine("%s %s", HTTP_HS_CONTENT, type);
-        // out.writeLine("");
+//        out.writeLine(HTTP_SC_OK);
+//        out.writeLine("%s %s", HTTP_HS_SERVER, PCX_AGENT);
+//        out.writeLine("%s %s", HTTP_HS_CONNECTION, "close");
+//        out.writeLine("%s %s", HTTP_HS_CONTENT, type);
+//        out.writeLine("");
     }
 
     void addHead(Element html) {
@@ -2567,7 +2524,7 @@ Debug.println("one request done");
         e.setAttribute("align", "center"); // GnuPacket.PCX_VERSTRING
         html.appendChild(e);
 
-        if (serventManager.downloadURL.length() != 0) {
+        if (!serventManager.downloadURL.isEmpty()) {
 
             Element e1 = Peercast.newElement("font");
             e1.setAttribute("color", "#FF0000");
@@ -2588,7 +2545,7 @@ Debug.println("one request done");
             html.appendChild(e1);
         }
 
-        if (serventManager.rootMsg.length() != 0) {
+        if (!serventManager.rootMsg.isEmpty()) {
 
             Element e1 = Peercast.newElement("div");
             e1.setAttribute("align", "center");
@@ -2691,7 +2648,7 @@ Debug.println("one request done");
     }
 
     /** */
-    void addFooter(Document html) {
+    static void addFooter(Document html) {
         Element e1 = Peercast.newElement("p");
         e1.setAttribute("width", "100%");
         Element e2 = Peercast.newElement("br");
@@ -2895,11 +2852,11 @@ Debug.println("one request done");
     }
 
     /** */
-    void addChannelSourceTag(Document html, Channel c) {
+    static void addChannelSourceTag(Document html, Channel c) {
         String stype = c.sourceType.toString();
         String ptype = c.info.srcProtocol.name();
 
-        if (c.sourceURL.length() != 0) {
+        if (!c.sourceURL.isEmpty()) {
             Element td = Peercast.newElement("td");
             td.setTextContent(String.format("%s-%s:<br>%s", stype, ptype, c.sourceURL));
         } else {
@@ -2916,7 +2873,7 @@ Debug.println("one request done");
     }
 
     /** */
-    void addChanInfo(Document html, ChannelInfo info, Channel ch) {
+    static void addChanInfo(Document html, ChannelInfo info, Channel ch) {
         int row = 0;
 
         TrackInfo track;
@@ -3161,7 +3118,7 @@ Debug.println("one request done");
     }
 
     /** */
-    void addChanHits(Document html, ChannelHitList chl, ChannelHit source, ChannelInfo info) {
+    static void addChanHits(Document html, ChannelHitList chl, ChannelHit source, ChannelInfo info) {
 
         html.setTextContent("br");
 
@@ -3250,7 +3207,7 @@ Debug.println("one request done");
                 td = Peercast.newElement("td");
                 td.setTextContent(String.format("%s", ch.tracker ? "Yes" : "No"));
 
-                if (ch.agentStr.length() != 0) {
+                if (!ch.agentStr.isEmpty()) {
                     td = Peercast.newElement("td");
                     td.setTextContent(String.format("%s", ch.agentStr));
                 } else {
@@ -3363,7 +3320,7 @@ Debug.println("one request done");
     }
 
     /** */
-    static int addStat(Document html, int row, int totIn, int totOut, final String name, Stats.STAT in, Stats.STAT out) {
+    static int addStat(Document html, int row, int totIn, int totOut, String name, Stats.STAT in, Stats.STAT out) {
         row++;
         Element td = Peercast.newElement("td");
         td.setTextContent(name);
@@ -3630,26 +3587,26 @@ Debug.println("one request done");
     }
 
     /** */
-    void printTest(String tag, Object fmt) {
+    static void printTest(String tag, Object fmt) {
         if (fmt != null) {
 
-            // va_list ap;
-            // va_start(ap, fmt);
+//            va_list ap;
+//            va_start(ap, fmt);
 
             // char tmp[512];
-            System.out.printf("%f", 10);
-            // vsprintf(tmp,fmt,ap);
-            // startNode(tag,tmp);
+            logger.log(Level.DEBUG, String.format("%f", 10));
+//            vsprintf(tmp, fmt, ap);
+//            startNode(tag, tmp);
 
-            // va_end(ap);
+//            va_end(ap);
         } else {
-            // startNode(tag,NULL);
+//            startNode(tag, NULL);
         }
-        // end();
+//        end();
     }
 
     /** */
-    void addStatistics(Document html) {
+    static void addStatistics(Document html) {
         Element table = Peercast.newElement("table");
         table.setAttribute("width", "100%");
         table.setAttribute("border", "0");
@@ -3764,18 +3721,18 @@ Debug.println("one request done");
         tr.appendChild(td);
         {
             switch (serventManager.getFirewall()) {
-            case ON:
-                td = Peercast.newElement("td");
-                td.setTextContent("Firewalled");
-                break;
-            case OFF:
-                td = Peercast.newElement("td");
-                td.setTextContent("Normal");
-                break;
-            default:
-                td = Peercast.newElement("td");
-                td.setTextContent("Unknown");
-                break;
+                case ON:
+                    td = Peercast.newElement("td");
+                    td.setTextContent("Firewalled");
+                    break;
+                case OFF:
+                    td = Peercast.newElement("td");
+                    td.setTextContent("Normal");
+                    break;
+                default:
+                    td = Peercast.newElement("td");
+                    td.setTextContent("Unknown");
+                    break;
             }
         }
         tr.appendChild(td);
@@ -3837,7 +3794,7 @@ Debug.println("one request done");
     }
 
     /** */
-    void addClientOptions(Document html) {
+    static void addClientOptions(Document html) {
         Element table = Peercast.newElement("table");
         table.setAttribute("width", "100%");
         table.setAttribute("border", "0");
@@ -4557,8 +4514,8 @@ Debug.println("one request done");
     /** */
     private int numUsed() {
         int cnt = 0;
-        for (int i = 0; i < seenIDs.size(); i++) {
-            if (seenIDs.get(i).storeTime > 0) {
+        for (GnuID seenID : seenIDs) {
+            if (seenID.storeTime > 0) {
                 cnt++;
             }
         }
@@ -4575,7 +4532,7 @@ Debug.println("one request done");
     }
 
     /** */
-    void addChannelInfo(Document html, ChannelInfo info, boolean fromRelay, boolean showPlay, boolean showInfo, boolean showURL, boolean showRelay) {
+    static void addChannelInfo(Document html, ChannelInfo info, boolean fromRelay, boolean showPlay, boolean showInfo, boolean showURL, boolean showRelay) {
         String name, url, desc;
         name = info.name;
         TrackInfo track = info.track;
@@ -4598,13 +4555,13 @@ Debug.println("one request done");
             e2.setAttribute("size", "-1");
             e2.setTextContent("");
             e1.appendChild(e2);
-            if (desc.length() == 0) {
+            if (desc.isEmpty()) {
                 Element e3 = Peercast.newElement("i");
                 e3.setTextContent(String.format("<br>%s", desc));
                 e2.appendChild(e3);
             }
 
-            if (track.artist.length() != 0 || track.title.length() != 0) {
+            if (!track.artist.isEmpty() || !track.title.isEmpty()) {
                 Element e3 = Peercast.newElement("i");
                 e3.setTextContent(String.format("<br>(%s - %s)", track.artist, track.title));
                 e2.appendChild(e3);
@@ -4637,7 +4594,7 @@ Debug.println("one request done");
                 html.appendChild(null);
             }
 
-            if ((url.length() != 0) && (showURL)) {
+            if ((!url.isEmpty()) && (showURL)) {
                 e1 = Peercast.newElement("b");
                 e1.setTextContent(" - ");
                 if (url.indexOf("mailto:") > 0) {
@@ -4865,10 +4822,10 @@ Debug.println("one request done");
     }
 
     /** */
-    void addWinampChansPage(Document html, final String wildcard, String type, boolean stop) {
+    void addWinampChansPage(Document html, String wildcard, String type, boolean stop) {
         int maxHits = ChannelManager.MAX_HITLISTS;
 
-        if (type.length() == 0) {
+        if (type.isEmpty()) {
             type = "name";
         }
 
@@ -4884,16 +4841,14 @@ Debug.println("one request done");
         ChannelInfo searchInfo = new ChannelInfo();
         searchInfo.init();
 
-        if (type.equals("name")) {
-            searchInfo.name = wildcard;
-        } else if (type.equals("genre")) {
-            searchInfo.genre = wildcard;
-        } else if (type.equals("bitrate")) {
-            searchInfo.bitrate = Integer.parseInt(wildcard);
+        switch (type) {
+            case "name" -> searchInfo.name = wildcard;
+            case "genre" -> searchInfo.genre = wildcard;
+            case "bitrate" -> searchInfo.bitrate = Integer.parseInt(wildcard);
         }
 
         for (ChannelHitList chl : channelManager.channelHitLists) {
-            if (chl.isUsed() && chl.hits.size() > 0) { // TODO chl.isAvailable()
+            if (chl.isUsed() && !chl.hits.isEmpty()) { // TODO chl.isAvailable()
                 if (chl.info.match(searchInfo)) {
                     hits[numHits++] = chl;
                 }
@@ -4906,7 +4861,7 @@ Debug.println("one request done");
             maxShown = true;
         }
 
-        if (serventManager.downloadURL.length() != 0) {
+        if (!serventManager.downloadURL.isEmpty()) {
 
             Element e1 = Peercast.newElement("font");
             e1.setAttribute("color", "#FF0000");
@@ -4928,7 +4883,7 @@ Debug.println("one request done");
             html.appendChild(null);
         }
 
-        if (serventManager.rootMsg.length() != 0) {
+        if (!serventManager.rootMsg.isEmpty()) {
             String pcMsg = serventManager.rootMsg;
             Element e1 = Peercast.newElement("div");
             e1.setAttribute("align", "center");
@@ -5061,100 +5016,100 @@ Debug.println("one request done");
         List<Channel> clist = channelManager.findChannels(info, ChannelManager.MAX_CHANNELS);
 
 
-            Element table = Peercast.newElement("table");
-            table.setAttribute("border", "0");
-            table.setAttribute("width", "95%");
-            table.setAttribute("align", "center");
+        Element table = Peercast.newElement("table");
+        table.setAttribute("border", "0");
+        table.setAttribute("width", "95%");
+        table.setAttribute("align", "center");
 
-            Element tr = Peercast.newElement("tr");
-            tr.setAttribute("bgcolor", "#cccccc");
-            tr.setAttribute("align", "center");
-            table.appendChild(tr);
+        Element tr = Peercast.newElement("tr");
+        tr.setAttribute("bgcolor", "#cccccc");
+        tr.setAttribute("align", "center");
+        table.appendChild(tr);
 
-            Element td = Peercast.newElement("td");
-            td.setTextContent("<b>Channel</b>");
-            tr.appendChild(td);
+        Element td = Peercast.newElement("td");
+        td.setTextContent("<b>Channel</b>");
+        tr.appendChild(td);
+
+        td = Peercast.newElement("td");
+        td.setTextContent("<b>Genre</b>");
+        tr.appendChild(td);
+
+        td = Peercast.newElement("td");
+        td.setAttribute("width", "1%");
+        td.setTextContent("<b>Bitrate (kb/s)</b>");
+        tr.appendChild(td);
+
+        td = Peercast.newElement("td");
+        td.setAttribute("width", "1%");
+        td.setTextContent("<b>Stream</b>");
+        tr.appendChild(td);
+
+        td = Peercast.newElement("td");
+        td.setAttribute("width", "2%");
+        td.setTextContent("<b>Relays</b>");
+        tr.appendChild(td);
+
+        td = Peercast.newElement("td");
+        td.setAttribute("width", "2%");
+        td.setTextContent("<b>Listeners</b>");
+        tr.appendChild(td);
+
+        td = Peercast.newElement("td");
+        td.setAttribute("width", "1%");
+        td.setTextContent("<b>Status</b>");
+        tr.appendChild(td);
+
+        td = Peercast.newElement("td");
+        td.setAttribute("width", "1%");
+        td.setTextContent("<b>Keep</b>");
+        tr.appendChild(td);
+
+        for (Channel c : clist) {
+
+            String genre = c.info.genre;
+
+            addChannelInfo(html, c.info, true, true, true, true, true);
 
             td = Peercast.newElement("td");
-            td.setTextContent("<b>Genre</b>");
-            tr.appendChild(td);
+            td.setTextContent(genre);
 
-            td = Peercast.newElement("td");
-            td.setAttribute("width", "1%");
-            td.setTextContent("<b>Bitrate (kb/s)</b>");
-            tr.appendChild(td);
-
-            td = Peercast.newElement("td");
-            td.setAttribute("width", "1%");
-            td.setTextContent("<b>Stream</b>");
-            tr.appendChild(td);
-
-            td = Peercast.newElement("td");
-            td.setAttribute("width", "2%");
-            td.setTextContent("<b>Relays</b>");
-            tr.appendChild(td);
-
-            td = Peercast.newElement("td");
-            td.setAttribute("width", "2%");
-            td.setTextContent("<b>Listeners</b>");
-            tr.appendChild(td);
-
-            td = Peercast.newElement("td");
-            td.setAttribute("width", "1%");
-            td.setTextContent("<b>Status</b>");
-            tr.appendChild(td);
-
-            td = Peercast.newElement("td");
-            td.setAttribute("width", "1%");
-            td.setTextContent("<b>Keep</b>");
-            tr.appendChild(td);
-
-            for (Channel c : clist) {
-
-                String genre = c.info.genre;
-
-                addChannelInfo(html, c.info, true, true, true, true, true);
-
+            // bitrate
+            if (c.getBitrate() != 0) {
                 td = Peercast.newElement("td");
-                td.setTextContent(genre);
-
-                // bitrate
-                if (c.getBitrate() != 0) {
-                    td = Peercast.newElement("td");
-                    td.setTextContent(String.format("%d", c.getBitrate()));
-                } else {
-                    td = Peercast.newElement("td");
-                    td.setTextContent("-");
-                }
-
-                // stream/type
+                td.setTextContent(String.format("%d", c.getBitrate()));
+            } else {
                 td = Peercast.newElement("td");
-                td.setAttribute("align", "center");
-                {
-                    String path = c.getStreamPath();
-                    Element a = Peercast.newElement("a");
-                    a.setAttribute("href", path);
-                    a.setTextContent(c.info.contentType.name());
-                    td.appendChild(a);
-                }
-                tr.appendChild(td);
-
-                // relays
-                td = Peercast.newElement("td");
-                td.setTextContent(String.format("%d", c.totalRelays())); // TODO orig is numRelays
-                // listeners
-                td = Peercast.newElement("td");
-                td.setTextContent(String.format("%d", c.totalListeners())); // TODO orig is numListeners
-                // status
-                td = Peercast.newElement("td");
-                td.setTextContent(c.status.toString());
-                // keep
-                td = Peercast.newElement("td");
-                td.setTextContent(c.stayConnected ? "Yes" : "No");
-
-                tr.appendChild(td);
+                td.setTextContent("-");
             }
-            html.appendChild(table); // table
+
+            // stream/type
+            td = Peercast.newElement("td");
+            td.setAttribute("align", "center");
+            {
+                String path = c.getStreamPath();
+                Element a = Peercast.newElement("a");
+                a.setAttribute("href", path);
+                a.setTextContent(c.info.contentType.name());
+                td.appendChild(a);
+            }
+            tr.appendChild(td);
+
+            // relays
+            td = Peercast.newElement("td");
+            td.setTextContent(String.format("%d", c.totalRelays())); // TODO orig is numRelays
+            // listeners
+            td = Peercast.newElement("td");
+            td.setTextContent(String.format("%d", c.totalListeners())); // TODO orig is numListeners
+            // status
+            td = Peercast.newElement("td");
+            td.setTextContent(c.status.toString());
+            // keep
+            td = Peercast.newElement("td");
+            td.setTextContent(c.stayConnected ? "Yes" : "No");
+
+            tr.appendChild(td);
+        }
+        html.appendChild(table); // table
 
         addFooter(html);
     }
@@ -5167,194 +5122,194 @@ Debug.println("one request done");
         List<Channel> clist = channelManager.findChannels(info, ChannelManager.MAX_CHANNELS);
 
 
-            Element table = Peercast.newElement("table");
-            table.setAttribute("border", "0");
-            table.setAttribute("align", "center");
+        Element table = Peercast.newElement("table");
+        table.setAttribute("border", "0");
+        table.setAttribute("align", "center");
 
-            html.setTextContent("form method=\"get\" action=\"/admin\"");
-            html.setTextContent("input name=\"cmd\" type=\"hidden\" value=\"fetch\"");
+        html.setTextContent("form method=\"get\" action=\"/admin\"");
+        html.setTextContent("input name=\"cmd\" type=\"hidden\" value=\"fetch\"");
 
-            Element tr = Peercast.newElement("tr");
-            tr.setAttribute("bgcolor", "#cccccc");
-            tr.setAttribute("align", "center");
-            table.appendChild(tr);
+        Element tr = Peercast.newElement("tr");
+        tr.setAttribute("bgcolor", "#cccccc");
+        tr.setAttribute("align", "center");
+        table.appendChild(tr);
 
-            Element td = Peercast.newElement("td");
-            td.setAttribute("colspan", "2");
-            td.setTextContent("<b>External Source</b>");
-            html.appendChild(null);
+        Element td = Peercast.newElement("td");
+        td.setAttribute("colspan", "2");
+        td.setTextContent("<b>External Source</b>");
+        html.appendChild(null);
 
-            int row = 0;
+        int row = 0;
 
-            row++;
-            td = Peercast.newElement("td");
-            td.setTextContent("URL (Required)");
-            td = Peercast.newElement("td");
-            Element e = Peercast.newElement("input");
-            e.setAttribute("name", "url");
-            e.setAttribute("size", "40");
-            e.setAttribute("type", "text");
-            e.setAttribute("value", "");
-            td.appendChild(e);
-            tr.appendChild(td);
+        row++;
+        td = Peercast.newElement("td");
+        td.setTextContent("URL (Required)");
+        td = Peercast.newElement("td");
+        Element e = Peercast.newElement("input");
+        e.setAttribute("name", "url");
+        e.setAttribute("size", "40");
+        e.setAttribute("type", "text");
+        e.setAttribute("value", "");
+        td.appendChild(e);
+        tr.appendChild(td);
 
-            row++;
-            td = Peercast.newElement("td");
-            td.setTextContent("Name");
-            td = Peercast.newElement("td");
-            e = Peercast.newElement("input");
-            e.setAttribute("name", "name");
-            e.setAttribute("size", "40");
-            e.setAttribute("type", "text");
-            e.setAttribute("value", "");
-            td.appendChild(e);
-            tr.appendChild(td);
+        row++;
+        td = Peercast.newElement("td");
+        td.setTextContent("Name");
+        td = Peercast.newElement("td");
+        e = Peercast.newElement("input");
+        e.setAttribute("name", "name");
+        e.setAttribute("size", "40");
+        e.setAttribute("type", "text");
+        e.setAttribute("value", "");
+        td.appendChild(e);
+        tr.appendChild(td);
 
-            row++;
-            td = Peercast.newElement("td");
-            td.setTextContent("Description");
-            td = Peercast.newElement("td");
-            e = Peercast.newElement("input");
-            e.setAttribute("name", "desc");
-            e.setAttribute("size", "40");
-            e.setAttribute("type", "text");
-            e.setAttribute("value", "");
-            td.appendChild(e);
-            tr.appendChild(td);
+        row++;
+        td = Peercast.newElement("td");
+        td.setTextContent("Description");
+        td = Peercast.newElement("td");
+        e = Peercast.newElement("input");
+        e.setAttribute("name", "desc");
+        e.setAttribute("size", "40");
+        e.setAttribute("type", "text");
+        e.setAttribute("value", "");
+        td.appendChild(e);
+        tr.appendChild(td);
 
-            row++;
-            td = Peercast.newElement("td");
-            td.setTextContent("Genre");
-            td = Peercast.newElement("td");
-            e = Peercast.newElement("input");
-            e.setAttribute("name", "genre");
-            e.setAttribute("size", "40");
-            e.setAttribute("type", "text");
-            e.setAttribute("value", "");
-            td.appendChild(e);
-            tr.appendChild(td);
+        row++;
+        td = Peercast.newElement("td");
+        td.setTextContent("Genre");
+        td = Peercast.newElement("td");
+        e = Peercast.newElement("input");
+        e.setAttribute("name", "genre");
+        e.setAttribute("size", "40");
+        e.setAttribute("type", "text");
+        e.setAttribute("value", "");
+        td.appendChild(e);
+        tr.appendChild(td);
 
-            row++;
-            td = Peercast.newElement("td");
-            td.setTextContent("Contact");
-            td = Peercast.newElement("td");
-            e = Peercast.newElement("input");
-            e.setAttribute("name", "contact");
-            e.setAttribute("size", "40");
-            e.setAttribute("type", "text");
-            e.setAttribute("value", "");
-            td.appendChild(e);
-            tr.appendChild(td);
+        row++;
+        td = Peercast.newElement("td");
+        td.setTextContent("Contact");
+        td = Peercast.newElement("td");
+        e = Peercast.newElement("input");
+        e.setAttribute("name", "contact");
+        e.setAttribute("size", "40");
+        e.setAttribute("type", "text");
+        e.setAttribute("value", "");
+        td.appendChild(e);
+        tr.appendChild(td);
 
-            row++;
-            td = Peercast.newElement("td");
-            td.setTextContent("Bitrate (kb/s)");
-            td = Peercast.newElement("td");
-            e = Peercast.newElement("input");
-            e.setAttribute("name", "bitrate");
-            e.setAttribute("size", "40");
-            e.setAttribute("type", "text");
-            e.setAttribute("value", "");
-            td.appendChild(e);
-            tr.appendChild(td);
+        row++;
+        td = Peercast.newElement("td");
+        td.setTextContent("Bitrate (kb/s)");
+        td = Peercast.newElement("td");
+        e = Peercast.newElement("input");
+        e.setAttribute("name", "bitrate");
+        e.setAttribute("size", "40");
+        e.setAttribute("type", "text");
+        e.setAttribute("value", "");
+        td.appendChild(e);
+        tr.appendChild(td);
 
-            row++;
-            td = Peercast.newElement("td");
-            td.setTextContent("Type");
-            td = Peercast.newElement("td");
-            html.setTextContent("select name=\"type\"");
-            e = Peercast.newElement("option");
-            e.setAttribute("value", "UNKNOWN");
-            e.setAttribute("selected", "");
-            e.setTextContent("Unknown");
-            e = Peercast.newElement("option");
-            e.setAttribute("value", "MP3");
-            e.setTextContent("MP3");
-            e = Peercast.newElement("option");
-            e.setAttribute("value", "OGG");
-            e.setTextContent("OGG");
-            e = Peercast.newElement("option");
-            e.setAttribute("value", "WMA");
-            e.setTextContent("WMA");
-            e = Peercast.newElement("option");
-            e.setAttribute("value", "NSV");
-            e.setTextContent("NSV");
-            e = Peercast.newElement("option");
-            e.setAttribute("value", "WMV");
-            e.setTextContent("WMV");
-            e = Peercast.newElement("option");
-            e.setAttribute("value", "RAW");
-            e.setTextContent("RAW");
-            html.appendChild(null);
-            html.appendChild(null);
-            html.appendChild(null);
+        row++;
+        td = Peercast.newElement("td");
+        td.setTextContent("Type");
+        td = Peercast.newElement("td");
+        html.setTextContent("select name=\"type\"");
+        e = Peercast.newElement("option");
+        e.setAttribute("value", "UNKNOWN");
+        e.setAttribute("selected", "");
+        e.setTextContent("Unknown");
+        e = Peercast.newElement("option");
+        e.setAttribute("value", "MP3");
+        e.setTextContent("MP3");
+        e = Peercast.newElement("option");
+        e.setAttribute("value", "OGG");
+        e.setTextContent("OGG");
+        e = Peercast.newElement("option");
+        e.setAttribute("value", "WMA");
+        e.setTextContent("WMA");
+        e = Peercast.newElement("option");
+        e.setAttribute("value", "NSV");
+        e.setTextContent("NSV");
+        e = Peercast.newElement("option");
+        e.setAttribute("value", "WMV");
+        e.setTextContent("WMV");
+        e = Peercast.newElement("option");
+        e.setAttribute("value", "RAW");
+        e.setTextContent("RAW");
+        html.appendChild(null);
+        html.appendChild(null);
+        html.appendChild(null);
 
-            row++;
-            td = Peercast.newElement("td");
-            e.setAttribute("colspan", "2");
-            e.setAttribute("align", "center");
-            html.setTextContent("input name=\"stream\" type=\"submit\" value=\"Create Relay\"");
-            html.appendChild(null);
-            html.appendChild(null);
+        row++;
+        td = Peercast.newElement("td");
+        e.setAttribute("colspan", "2");
+        e.setAttribute("align", "center");
+        html.setTextContent("input name=\"stream\" type=\"submit\" value=\"Create Relay\"");
+        html.appendChild(null);
+        html.appendChild(null);
 
-            html.appendChild(null);
-            html.appendChild(null);
+        html.appendChild(null);
+        html.appendChild(null);
 
-            html.setTextContent("br");
+        html.setTextContent("br");
 
-            html.setTextContent("table border=\"0\" width=\"95%%\" align=\"center\"");
+        html.setTextContent("table border=\"0\" width=\"95%%\" align=\"center\"");
 
-            html.setTextContent("tr bgcolor=\"#cccccc\" align=\"center\"");
-            td = Peercast.newElement("td");
-            td.setTextContent("<b>Channel</b>");
-            td = Peercast.newElement("td");
-            td.setTextContent("<b>Source</b>");
-            td = Peercast.newElement("td");
-            td.setTextContent("<b>Pos</b>");
-            td = Peercast.newElement("td");
-            td.setTextContent("<b>Bitrate (kb/s)</b>");
-            td = Peercast.newElement("td");
-            td.setTextContent("<b>Type</b>");
-            html.appendChild(null);
+        html.setTextContent("tr bgcolor=\"#cccccc\" align=\"center\"");
+        td = Peercast.newElement("td");
+        td.setTextContent("<b>Channel</b>");
+        td = Peercast.newElement("td");
+        td.setTextContent("<b>Source</b>");
+        td = Peercast.newElement("td");
+        td.setTextContent("<b>Pos</b>");
+        td = Peercast.newElement("td");
+        td.setTextContent("<b>Bitrate (kb/s)</b>");
+        td = Peercast.newElement("td");
+        td.setTextContent("<b>Type</b>");
+        html.appendChild(null);
 
-            for (Channel c : clist) {
-                if (c.isBroadcasting()) {
-                    long uptime = Peercast.getInstance().lastPlayTime != 0 ? (System.currentTimeMillis() - Peercast.getInstance().lastPlayTime) : 0;
-                    String uptimeStr = Peercast.getFromStopwatch((int) (uptime / 1000));
+        for (Channel c : clist) {
+            if (c.isBroadcasting()) {
+                long uptime = Peercast.getInstance().lastPlayTime != 0 ? (System.currentTimeMillis() - Peercast.getInstance().lastPlayTime) : 0;
+                String uptimeStr = Peercast.getFromStopwatch((int) (uptime / 1000));
 
-                    String idStr = c.getIDString();
+                String idStr = c.getIDString();
 
-                    row++;
+                row++;
 
-                    String name = c.info.name;
+                String name = c.info.name;
 
-                    String ipStr = serventManager.serverHost.getHostName();
+                String ipStr = serventManager.serverHost.getHostName();
 
-                    // use global peercast URL as name link
+                // use global peercast URL as name link
+                td = Peercast.newElement("td");
+                String temp = String.format("peercast://pls/%s?ip=%s", idStr, ipStr);
+                e = Peercast.newElement("a");
+                e.setAttribute("href", temp);
+                e.setTextContent(name);
+                html.appendChild(e);
+
+                addChannelSourceTag(html, c);
+
+                td = Peercast.newElement("td");
+                td.setTextContent(String.format("%d", c.streamPos));
+
+                if (c.getBitrate() != 0) {
                     td = Peercast.newElement("td");
-                    String temp = String.format("peercast://pls/%s?ip=%s", idStr, ipStr);
-                    e = Peercast.newElement("a");
-                    e.setAttribute("href", temp);
-                    e.setTextContent(name);
-                    html.appendChild(e);
-
-                    addChannelSourceTag(html, c);
-
+                    td.setTextContent(String.format("%d", c.getBitrate()));
+                } else {
                     td = Peercast.newElement("td");
-                    td.setTextContent(String.format("%d", c.streamPos));
+                    td.setTextContent("-");
+                }
 
-                    if (c.getBitrate() != 0) {
-                        td = Peercast.newElement("td");
-                        td.setTextContent(String.format("%d", c.getBitrate()));
-                    } else {
-                        td = Peercast.newElement("td");
-                        td.setTextContent("-");
-                    }
+                td = Peercast.newElement("td");
+                td.setTextContent(c.info.contentType.name());
 
-                    td = Peercast.newElement("td");
-                    td.setTextContent(c.info.contentType.name());
-
-                    html.appendChild(null);
+                html.appendChild(null);
             }
             html.appendChild(null); // table
 
@@ -5366,14 +5321,14 @@ Debug.println("one request done");
     void handshakeHTTP_get(HttpServletRequest request, HttpServletResponse response) throws IOException {
 
         String fn = request.getRequestURI();
-Debug.println("uri: " + fn);
+        logger.log(Level.TRACE, "uri: " + fn);
 
         if (fn.startsWith("/admin?")) {
             if (!isAllowed(ServentManager.Allow.HTML)) {
                 response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
             }
 
-            log.debug("Admin client");
+            logger.log(Level.DEBUG, "Admin client");
             handshakeCMD(request, response, fn.substring(7));
 
         } else if (fn.startsWith("/http/")) {
@@ -5405,7 +5360,7 @@ Debug.println("uri: " + fn);
                 response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
             }
 
-            log.debug("Admin client");
+            logger.log(Level.DEBUG, "Admin client");
             handshakeCMD(request, response, fn.substring(8));
 
         } else if (fn.startsWith("/admin.cgi")) {
@@ -5435,11 +5390,11 @@ Debug.println("uri: " + fn);
                             newInfo.track.title = songArg;
 
                             if (urlArg != null) {
-                                if (urlArg.length() != 0) {
+                                if (!urlArg.isEmpty()) {
                                     newInfo.track.contact = urlArg;
                                 }
                             }
-                            log.debug(String.format("Ch.%d Shoutcast update: %s", channel.index, songArg));
+                            logger.log(Level.DEBUG, String.format("Ch.%d Shoutcast update: %s", channel.index, songArg));
                             channel.updateInfo(newInfo);
                         }
                     }
@@ -5448,22 +5403,24 @@ Debug.println("uri: " + fn);
 
         } else if (fn.startsWith("/pls/")) {
 
-            if (!((InetSocketAddress) sock.getRemoteSocketAddress()).getAddress().isAnyLocalAddress()) {
+            if (!isLocal(((InetSocketAddress) sock.getRemoteSocketAddress()).getAddress())) {
                 if (!isAllowed(ServentManager.Allow.ALLOW_DIRECT) || !isFiltered(ServFilter.Type.DIRECT.value)) {
                     response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+                    return;
                 }
             }
 
             ChannelInfo info = new ChannelInfo();
-            if (serventManager.getChannel(fn.substring(5), info, isPrivate())) {
-                handshakePLS(request, response, info, false);
+            Channel channel = serventManager.getChannel(fn.substring(5), info, isPrivate());
+            if (channel != null) {
+                handshakePLS(request, response, channel.info, false);
             } else {
                 response.sendError(HttpServletResponse.SC_NOT_FOUND);
             }
 
         } else if (fn.startsWith("/stream/")) {
 
-            if (!((InetSocketAddress) sock.getRemoteSocketAddress()).getAddress().isAnyLocalAddress()) {
+            if (!isLocal(((InetSocketAddress) sock.getRemoteSocketAddress()).getAddress())) {
                 if (!isAllowed(ServentManager.Allow.ALLOW_DIRECT) || !isFiltered(ServFilter.Type.DIRECT.value)) {
                     response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
                 }
@@ -5473,7 +5430,7 @@ Debug.println("uri: " + fn);
 
         } else if (fn.startsWith("/channel/")) {
 
-            if (!((InetSocketAddress) sock.getRemoteSocketAddress()).getAddress().isAnyLocalAddress()) {
+            if (!isLocal(((InetSocketAddress) sock.getRemoteSocketAddress()).getAddress())) {
                 if (!isAllowed(ServentManager.Allow.ALLOW_NETWORK) || !isFiltered(ServFilter.Type.NETWORK.value)) {
                     response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
                 }
@@ -5518,7 +5475,7 @@ Debug.println("uri: " + fn);
             if (!ch.acceptGIV(sock))
                 response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
 
-            log.debug(String.format("Accepted GIV channel %s from: %s", idstr, ipstr));
+            logger.log(Level.DEBUG, String.format("Accepted GIV channel %s from: %s", idstr, ipstr));
 
             sock = null; // release this servent but dont close socket.
         } else {
@@ -5527,7 +5484,7 @@ Debug.println("uri: " + fn);
                 response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
             }
 
-            log.debug(String.format("Accepted GIV PCP from: %s", ipstr));
+            logger.log(Level.DEBUG, String.format("Accepted GIV PCP from: %s", ipstr));
             sock = null; // release this servent but dont close socket.
         }
     }
@@ -5548,7 +5505,7 @@ Debug.println("uri: " + fn);
             response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
         }
 
-        log.debug("PEERCAST client");
+        logger.log(Level.DEBUG, "PEERCAST client");
         processServent(request, response);
     }
 
@@ -5564,7 +5521,7 @@ Debug.println("uri: " + fn);
         if ((ps = in.indexOf("ICE/1.0")) >= 0) {
             mount = in.substring(7);
             ps = 0;
-            log.debug(String.format("ICE 1.0 client to %s", mount != null ? mount : "unknown"));
+            logger.log(Level.DEBUG, String.format("ICE 1.0 client to %s", mount != null ? mount : "unknown"));
         } else {
             ps = in.lastIndexOf('/'); // password preceeds
             if (ps < 0) {
@@ -5572,7 +5529,7 @@ Debug.println("uri: " + fn);
             }
             loginPassword = in.substring(7, ps);
 
-            log.debug(String.format("ICY client: %s %s", loginPassword, mount != null ? mount : "unknown"));
+            logger.log(Level.DEBUG, String.format("ICY client: %s %s", loginPassword, mount != null ? mount : "unknown"));
         }
 
         if (mount != null) {
@@ -5593,7 +5550,7 @@ Debug.println("uri: " + fn);
 
         response.setStatus(0); // TODO "OK2"
         response.setHeader("icy-caps", "11");
-        log.debug("ShoutCast client");
+        logger.log(Level.DEBUG, "ShoutCast client");
 
         handshakeICY(request, response, Channel.SourceType.SHOUTCAST, isHttp);
 //      sock = null; // socket is taken over by channel, so don`t close it
@@ -5605,14 +5562,14 @@ Debug.println("uri: " + fn);
             return false;
         }
 
-        // TODO !!! ���݂����Y�ݒ� !!!
-Debug.println(String.format("bitrate: %b, relay: %b, direct: %b, play: %b, channel: %b", serventManager.bitrateFull(ch.getBitrate()), (type.equals(Type.RELAY) && serventManager.relaysFull()), (type.equals(Type.DIRECT) && serventManager.directFull()), !ch.isPlaying(), ch.isFull()));
+        // TODO !!! Parameter settings !!!
+        logger.log(Level.TRACE, String.format("bitrate: %b, relay: %b, direct: %b, play: %b, channel: %b", serventManager.bitrateFull(ch.getBitrate()), (type.equals(Type.RELAY) && serventManager.relaysFull()), (type.equals(Type.DIRECT) && serventManager.directFull()), !ch.isPlaying(), ch.isFull()));
         if (!isPrivate()) {
             if (serventManager.bitrateFull(ch.getBitrate()) ||
-                (type.equals(Type.RELAY) && serventManager.relaysFull()) ||
-                (type.equals(Type.DIRECT) && serventManager.directFull()) ||
-                !ch.isPlaying() ||
-                ch.isFull()) {
+                    (type.equals(Type.RELAY) && serventManager.relaysFull()) ||
+                    (type.equals(Type.DIRECT) && serventManager.directFull()) ||
+                    !ch.isPlaying() ||
+                    ch.isFull()) {
 
                 return false;
             }
@@ -5651,15 +5608,15 @@ Debug.println(String.format("bitrate: %b, relay: %b, direct: %b, play: %b, chann
 
             String protocol = requestContext.getProtocol().getName();
 
-            log.debug(String.format("Connect from %s '%s'", requestContext.getRemoteHost() + ":" + requestContext.getRemotePort(), protocol));
+            logger.log(Level.DEBUG, String.format("Connect from %s '%s'", requestContext.getRemoteHost() + ":" + requestContext.getRemotePort(), protocol));
             if ("RTSP".equalsIgnoreCase(protocol)) {
-//              log.debug(String.format("RTSP from %s '%s'", requestContext.getRemoteHost() + ":" + requestContext.getRemotePort(), protocol));
+//              logger.log(Level.DEBUG, String.format("RTSP from %s '%s'", requestContext.getRemoteHost() + ":" + requestContext.getRemotePort(), protocol));
                 handshakeRTSP(request, response);
             } else if ("HTTP".equalsIgnoreCase(protocol)) {
-//              log.debug(String.format("HTTP from %s '%s'", requestContext.getRemoteHost() + ":" + requestContext.getRemotePort(), protocol));
+//              logger.log(Level.DEBUG, String.format("HTTP from %s '%s'", requestContext.getRemoteHost() + ":" + requestContext.getRemotePort(), protocol));
                 handshakeHTTP_get(request, response);
             } else if ("GIV".equalsIgnoreCase(protocol)) {
-//              log.debug(String.format("Connect from %s '%s'", requestContext.getRemoteHost() + ":" + requestContext.getRemotePort(), protocol));
+//              logger.log(Level.DEBUG, String.format("Connect from %s '%s'", requestContext.getRemoteHost() + ":" + requestContext.getRemotePort(), protocol));
                 handshakeHTTP_giv(request, response);
             } else if (GnuPacket.PCX_PCP_CONNECT.equalsIgnoreCase(protocol)) {
                 handshakeHTTP_PCX_PCP_CONNECT(request, response);
@@ -5682,7 +5639,7 @@ Debug.println(String.format("bitrate: %b, relay: %b, direct: %b, play: %b, chann
         } finally {
             try {
                 os.flush();
-Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
+                logger.log(Level.TRACE, "==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
             } catch (IOException e) {
                 e.printStackTrace(System.err);
             }
@@ -5692,13 +5649,20 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
     /**
      * /stream/
      * /channel/
+     *
      * @param url sid?foo=var...
      */
     void triggerChannel(HttpServletRequest request, HttpServletResponse response, String url, ChannelInfo.Protocol proto, boolean relay) throws IOException {
 
         ChannelInfo info = new ChannelInfo();
 
-        serventManager.getChannel(url, info, relay);
+        Channel channel = serventManager.getChannel(url, info, relay);
+        if (channel == null) {
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
+
+        info = channel.info;
 
         if (proto.equals(ChannelInfo.Protocol.PCP)) {
             type = Type.RELAY;
@@ -5712,37 +5676,41 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
     }
 
     /** TODO should move to PlayList */
+    private static String plsContentType(PlayList type) {
+        return switch (type) {
+            case PLS -> Peercast.MIME_XM3U;
+            case ASX -> Peercast.MIME_ASX;
+            case RAM -> Peercast.MIME_RAM;
+            default -> Peercast.MIME_TEXT;
+        };
+    }
+
+    /** for a raw socket */
     void writePLSHeader(OutputStream s, PlayList type) {
         PrintStream ps = new PrintStream(s);
-        ps.println(String.valueOf(HttpServletResponse.SC_OK));
-        ps.printf("%s %s\n", Peercast.HTTP_HS_SERVER, GnuPacket.PCX_AGENT);
+        ps.print("HTTP/1.0 200 OK\r\n");
+        ps.printf("%s: %s\r\n", Peercast.HTTP_HS_SERVER, GnuPacket.PCX_AGENT);
+        ps.printf("%s: %s\r\n", Peercast.HTTP_HS_CONTENT, plsContentType(type));
+        ps.print("Content-Disposition: inline\r\n");
+        ps.print("Cache-Control: private\r\n");
+        ps.printf("%s: %s\r\n", Peercast.HTTP_HS_CONNECTION, "close");
+        ps.print("\r\n");
+        ps.flush();
+    }
 
-        final String content;
-        switch (type) {
-        case PLS:
-            content = Peercast.MIME_XM3U;
-            break;
-        case ASX:
-            content = Peercast.MIME_ASX;
-            break;
-        case RAM:
-            content = Peercast.MIME_RAM;
-            break;
-        default:
-            content = Peercast.MIME_TEXT;
-            break;
-        }
-        ps.printf("%s %s\n", Peercast.HTTP_HS_CONTENT, content);
-        ps.println("Content-Disposition: inline");
-        ps.println("Cache-Control: private");
-        ps.printf("%s %s\n", Peercast.HTTP_HS_CONNECTION, "close");
-
-        ps.println();
+    /** for a servlet response, headers must not be written into the body */
+    void setPLSHeader(HttpServletResponse response, PlayList type) {
+        response.setStatus(HttpServletResponse.SC_OK);
+        response.setHeader(Peercast.HTTP_HS_SERVER, GnuPacket.PCX_AGENT);
+        response.setContentType(plsContentType(type));
+        response.setHeader("Content-Disposition", "inline");
+        response.setHeader("Cache-Control", "private");
+        response.setHeader(Peercast.HTTP_HS_CONNECTION, "close");
     }
 
     /** */
     void handshakePLS(HttpServletRequest request, HttpServletResponse response, ChannelInfo info, boolean doneHandshake) throws IOException {
-        String url = null;
+        String url;
 
         BufferedReader reader = new BufferedReader(new InputStreamReader(request.getInputStream()));
         if (!doneHandshake) {
@@ -5751,12 +5719,12 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
             }
         }
 
-        if (getLocalURL(url)) {
+        if ((url = getLocalURL()) != null) {
 
             PlayList type;
 
             if (info.contentType.equals(ChannelInfo.ContentType.WMA) ||
-                info.contentType.equals(ChannelInfo.ContentType.WMV)) {
+                    info.contentType.equals(ChannelInfo.ContentType.WMV)) {
                 type = PlayList.ASX;
             } else if (info.contentType.equals(ChannelInfo.ContentType.OGM)) {
                 type = PlayList.RAM;
@@ -5764,27 +5732,29 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
                 type = PlayList.PLS;
             }
 
-            writePLSHeader(response.getOutputStream(), type);
-
             type.init(1);
-            type.addChannel(url, info);
+            if (!type.addChannel(url, info)) {
+                response.sendError(HttpServletResponse.SC_NOT_FOUND);
+                return;
+            }
+
+            setPLSHeader(response, type);
             type.write(response.getOutputStream());
         }
     }
 
     /** */
     void handshakePLS(ChannelHitList[] cl, int num, boolean doneHandshake) throws IOException {
-        String url = null;
+        String url;
 
         BufferedReader reader = new BufferedReader(new InputStreamReader(sock.getInputStream()));
         String in = reader.readLine();
         if (!doneHandshake) {
             while (in != null) {
-                ;
             }
         }
 
-        if (getLocalURL(url)) {
+        if ((url = getLocalURL()) != null) {
             writePLSHeader(sock.getOutputStream(), PlayList.SCPLS);
 
             PlayList pls = PlayList.SCPLS;
@@ -5799,14 +5769,14 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
     }
 
     /** */
-    boolean getLocalURL(String str) throws IOException {
+    String getLocalURL() throws IOException {
         if (sock == null) {
             throw new IOException("Not connected");
         }
 
         InetSocketAddress h;
 
-        if (((InetSocketAddress) sock.getRemoteSocketAddress()).getAddress().isAnyLocalAddress()) {
+        if (isLocal(((InetSocketAddress) sock.getRemoteSocketAddress()).getAddress())) {
             h = (InetSocketAddress) sock.getLocalSocketAddress();
         } else {
             h = serventManager.serverHost;
@@ -5816,8 +5786,7 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
 
         String ipStr = h.getHostName();
 
-        str = String.format("http://%s", ipStr);
-        return true;
+        return String.format("http://%s", ipStr);
     }
 
     /**
@@ -5829,7 +5798,7 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
         BufferedReader reader = new BufferedReader(new InputStreamReader(request.getInputStream()));
         String tmp;
         while ((tmp = reader.readLine()) != null) {
-            log.debug(String.format("POST: %s", tmp));
+            logger.log(Level.DEBUG, String.format("POST: %s", tmp));
         }
 
         response.sendError(HttpServletResponse.SC_BAD_REQUEST);
@@ -5841,12 +5810,12 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
     }
 
     /** */
-    boolean handshakeAuth(HttpServletRequest request, HttpServletResponse response, final String args, boolean local) throws IOException {
+    boolean handshakeAuth(HttpServletRequest request, HttpServletResponse response, String args, boolean local) throws IOException {
         String pass = null;
 
         String pwd = request.getParameter("pass");
 
-        if (pwd != null && serventManager.password.length() != 0) {
+        if (pwd != null && !serventManager.password.isEmpty()) {
             if (pwd.equals(serventManager.password)) {
                 return true;
             }
@@ -5859,50 +5828,50 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
             String name = (String) e.nextElement();
 
             switch (serventManager.authType) {
-            case HTTPBASIC:
-                if (name.equals("Authorization")) {
-                    String value = new String(Base64.decodeBase64(request.getHeader("Basic").getBytes()));
-                    int p = value.indexOf(':');
-                    String user = value.substring(0, p - 1);
-                    pass = value.substring(p + 1);
-                }
-                break;
-            case COOKIE:
-                if (name.equals("Cookie")) {
-                    String value = request.getHeader(name);
-                    log.debug(String.format("Got cookie: %s", request.getHeader(name)));
-                    int idp = 0;
-                    while ((idp = value.indexOf("id=")) > 0) {
-                        idp += 3;
-                        gotCookie = new Cookie(value.substring(idp), ((InetSocketAddress) sock.getRemoteSocketAddress()).getAddress().getHostName());
-                        if (serventManager.cookieList.contains(gotCookie)) {
-                            log.debug("Cookie found");
-                            cookie = gotCookie;
-                            break;
-                        }
-
+                case HTTPBASIC:
+                    if (name.equals("Authorization")) {
+                        String value = new String(Base64.decodeBase64(request.getHeader("Basic").getBytes()));
+                        int p = value.indexOf(':');
+                        String user = value.substring(0, p - 1);
+                        pass = value.substring(p + 1);
                     }
-                }
-                break;
+                    break;
+                case COOKIE:
+                    if (name.equals("Cookie")) {
+                        String value = request.getHeader(name);
+                        logger.log(Level.DEBUG, String.format("Got cookie: %s", request.getHeader(name)));
+                        int idp = 0;
+                        while ((idp = value.indexOf("id=")) > 0) {
+                            idp += 3;
+                            gotCookie = new Cookie(value.substring(idp), ((InetSocketAddress) sock.getRemoteSocketAddress()).getAddress().getHostName());
+                            if (serventManager.cookieList.contains(gotCookie)) {
+                                logger.log(Level.DEBUG, "Cookie found");
+                                cookie = gotCookie;
+                                break;
+                            }
+
+                        }
+                    }
+                    break;
             }
         }
 
-        if (((InetSocketAddress) sock.getRemoteSocketAddress()).getAddress().isAnyLocalAddress()) {
+        if (isLocal(((InetSocketAddress) sock.getRemoteSocketAddress()).getAddress())) {
             return true;
         }
 
         switch (serventManager.authType) {
-        case HTTPBASIC:
+            case HTTPBASIC:
 
-            if (pass.equals(serventManager.password) && serventManager.password.length() != 0) {
-                return true;
-            }
-            break;
-        case COOKIE:
-            if (serventManager.cookieList.contains(cookie)) {
-                return true;
-            }
-            break;
+                if (pass.equals(serventManager.password) && !serventManager.password.isEmpty()) {
+                    return true;
+                }
+                break;
+            case COOKIE:
+                if (serventManager.cookieList.contains(cookie)) {
+                    return true;
+                }
+                break;
         }
 
         if (serventManager.authType == ServentManager.AuthType.HTTPBASIC) {
@@ -6014,8 +5983,15 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
                         } else if (curr.equals("forceip")) {
                             serventManager.forceIP = request.getParameter(curr);
                         } else if (curr.equals("htmlPath")) {
-                            serventManager.htmlPath = "html/";
-                            serventManager.htmlPath = request.getParameter(curr);
+                            // used in redirects, accept only "html/<language>" (no open redirect)
+                            String value = request.getParameter(curr);
+                            for (String lang : Locale.getISOLanguages()) {
+                                String candidate = "html/" + lang;
+                                if (candidate.equals(value)) {
+                                    serventManager.htmlPath = candidate;
+                                    break;
+                                }
+                            }
                         } else if (curr.equals("djmsg")) {
                             String msg = request.getParameter(curr);
                             channelManager.setBroadcastMessage(msg);
@@ -6060,7 +6036,7 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
                         } else if (curr.equals("clientactive")) {
                             serventManager.autoConnect = Boolean.parseBoolean(request.getParameter(curr));
                         } else if (curr.equals("yp")) {
-                            serventManager.rootHost = new String(request.getParameter(curr)); // ESC
+                            serventManager.rootHost = request.getParameter(curr); // ESC
                         } else if (curr.equals("deadhitage")) {
                             channelManager.deadHitAge = Integer.parseInt(request.getParameter(curr));
                         } else if (curr.equals("refresh")) {
@@ -6114,18 +6090,18 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
 
                         serventManager.serverHost = new InetSocketAddress(serventManager.serverHost.getAddress(), newPort);
                         serventManager.restartServer = true;
-                        // html.setRefresh(3);
-                        // html.setRefreshURL(jumpStr);
-                        // html.startHTML();
-                        // html.addHead();
-                        // html.startBody();
-                        // html.startTagEnd("h1","Please wait...");
-                        // html.end();
-                        // html.end();
+//                        html.setRefresh(3);
+//                        html.setRefreshURL(jumpStr);
+//                        html.startHTML();
+//                        html.addHead();
+//                        html.startBody();
+//                        html.startTagEnd("h1", "Please wait...");
+//                        html.end();
+//                        html.end();
 
-                        // char ipstr[64];
-                        // servMgr.serverHost.toStr(ipstr);
-                        // sprintf(jumpStr,"/%s/settings.html",ipstr,servMgr.htmlPath);
+//                        char ipstr[ 64];
+//                        servMgr.serverHost.toStr(ipstr);
+//                        sprintf(jumpStr, "/%s/settings.html", ipstr, servMgr.htmlPath);
                         jumpArg = jumpStr;
 
                     } else {
@@ -6149,20 +6125,14 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
                     while (e.hasMoreElements()) {
                         curr = (String) e.nextElement();
                         String value = request.getParameter(curr);
-                        if (curr.equals("url")) {
-                            curl = value; // String.T_ESC);
-                        } else if (curr.equals("name")) {
-                            info.name = value; // String.T_ESC);
-                        } else if (curr.equals("desc")) {
-                            info.desc = value; // String.T_ESC);
-                        } else if (curr.equals("genre")) {
-                            info.genre = value; // String.T_ESC);
-                        } else if (curr.equals("contact")) {
-                            info.url = value; // String.T_ESC);
-                        } else if (curr.equals("bitrate")) {
-                            info.bitrate = Integer.parseInt(value);
-                        } else if (curr.equals("type")) {
-                            info.contentType = ChannelInfo.ContentType.valueOf(value);
+                        switch (curr) {
+                            case "url" -> curl = value; // String.T_ESC);
+                            case "name" -> info.name = value; // String.T_ESC);
+                            case "desc" -> info.desc = value; // String.T_ESC);
+                            case "genre" -> info.genre = value; // String.T_ESC);
+                            case "contact" -> info.url = value; // String.T_ESC);
+                            case "bitrate" -> info.bitrate = Integer.parseInt(value);
+                            case "type" -> info.contentType = ChannelInfo.ContentType.valueOf(value);
                         }
 
                     }
@@ -6231,13 +6201,13 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
                     Enumeration<?> e = request.getParameterNames();
                     while (e.hasMoreElements()) {
                         curr = (String) e.nextElement();
-                        if (curr.equals("hostcache"))
-                            serventManager.clearServiceHosts(ServHost.Type.SERVENT);
-                        else if (curr.equals("hitlists"))
-                            channelManager.clearHitLists();
-                        else if (curr.equals("packets")) {
-                            Peercast.getInstance().stats.clearRange(Stats.STAT.PACKETSSTART, Stats.STAT.PACKETSEND);
-                            serventManager.numVersions = 0;
+                        switch (curr) {
+                            case "hostcache" -> serventManager.clearServiceHosts(ServHost.Type.SERVENT);
+                            case "hitlists" -> channelManager.clearHitLists();
+                            case "packets" -> {
+                                Peercast.getInstance().stats.clearRange(Stats.STAT.PACKETSSTART, Stats.STAT.PACKETSEND);
+                                serventManager.numVersions = 0;
+                            }
                         }
                     }
 
@@ -6408,8 +6378,8 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
                         curr = (String) e.nextElement();
                         if (curr.equals("ip")) {
                             InetSocketAddress h = new InetSocketAddress(request.getParameter(curr), GnuPacket.DEFAULT_PORT);
-                            if (serventManager.addOutgoing(h, id, true)) {
-                                log.debug(String.format("Added connection: %s", request.getParameter(curr)));
+                            if (ServentManager.addOutgoing(h, id, true)) {
+                                logger.log(Level.DEBUG, String.format("Added connection: %s", request.getParameter(curr)));
                             }
                         } else if (curr.equals("id")) {
                             id = new GnuID(request.getParameter(curr));
@@ -6425,7 +6395,6 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
                     id.generate();
                     String idstr = id.toString();
 
-                    cookie.setComment(idstr); // TODO html structure
                     cookie.setValue(((InetSocketAddress) sock.getRemoteSocketAddress()).getAddress().getHostName());
                     serventManager.cookieList.add(cookie);
 
@@ -6447,12 +6416,12 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
         } catch (IOException e) {
             Element h1 = Peercast.newElement("h1");
             h1.setTextContent(String.format("ERROR - %s", e.getMessage()));
-            log.error(String.format("html: %s", e.getMessage()));
+            logger.log(Level.ERROR, String.format("html: %s", e.getMessage()));
         }
 
         if (retHTML) {
             if (jumpArg != null) {
-                String jmp = new String(jumpArg);
+                String jmp = jumpArg;
                 response.sendRedirect(jmp);
             }
         }
@@ -6463,7 +6432,7 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
         Element n = c.info.createChannelXML();
         n.appendChild(c.createRelayXML(true));
         n.appendChild(c.info.createTrackXML());
-        // n.add(c.info.createServentXML());
+//        n.add(c.info.createServentXML());
         return n;
     }
 
@@ -6472,7 +6441,7 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
         Element n = chl.info.createChannelXML();
         n.appendChild(chl.createHitsXML());
         n.appendChild(chl.info.createTrackXML());
-        // n.add(chl.info.createServentXML());
+//        n.add(chl.info.createServentXML());
         return n;
     }
 
@@ -6546,88 +6515,83 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
 
     /**
      * Injects response header values into info
+     *
      * @param context
      * @param info
      * @param servent
      */
     static void readICYHeader(HttpContext context, ChannelInfo info, Servent servent) {
 
-        Iterator<?> e = context.getHeaders().keySet().iterator();
-        while (e.hasNext()) {
-            String name = (String) e.next();
-//log.debug("name: " + name);
+        for (String name : context.getHeaders().keySet()) {
+            //logger.log(Level.DEBUG, "name: " + name);
 
-            if (name.equals("x-audiocast-name") || name.equals("icy-name") || name.equals("ice-name")) {
-                info.name = context.getHeader(name);
-
-            } else if (name.equals("x-audiocast-url") || name.equals("icy-url") || name.equals("ice-url")) {
-                info.url = context.getHeader(name);
-            } else if (name.equals("x-audiocast-bitrate") || name.equals("icy-br") || name.equals("ice-bitrate") || name.equals("icy-bitrate")) {
-                info.bitrate = Integer.parseInt(context.getHeader(name));
-            } else if (name.equals("x-audiocast-genre") || name.equals("ice-genre") || name.equals("icy-genre")) {
-                info.genre = context.getHeader(name);
-
-            } else if (name.equals("x-audiocast-description") || name.equals("ice-description")) {
-                info.desc = context.getHeader(name);
-
-            } else if (name.equals("authorization")) {
-                String value = new String(Base64.decodeBase64(context.getHeader("Basic").getBytes()));
-                int p = value.indexOf(':');
-                servent.loginPassword = value.substring(p + 1);
-            } else if (name.equals(GnuPacket.PCX_HS_CHANNELID)) {
-                info.id = new GnuID(context.getHeader(name));
-            } else if (name.equals("ice-password")) {
-                if (servent.loginPassword != null) {
-                    if (context.getHeader(name).length() < 64) {
-                        servent.loginPassword = context.getHeader(name);
+            switch (name) {
+                case "x-audiocast-name", "icy-name", "ice-name" -> info.name = context.getHeader(name);
+                case "x-audiocast-url", "icy-url", "ice-url" -> info.url = context.getHeader(name);
+                case "x-audiocast-bitrate", "icy-br", "ice-bitrate", "icy-bitrate" ->
+                        info.bitrate = Integer.parseInt(context.getHeader(name));
+                case "x-audiocast-genre", "ice-genre", "icy-genre" -> info.genre = context.getHeader(name);
+                case "x-audiocast-description", "ice-description" -> info.desc = context.getHeader(name);
+                case "authorization" -> {
+                    String value = new String(Base64.decodeBase64(context.getHeader("Basic").getBytes()));
+                    int p = value.indexOf(':');
+                    servent.loginPassword = value.substring(p + 1);
+                }
+                case GnuPacket.PCX_HS_CHANNELID -> info.id = new GnuID(context.getHeader(name));
+                case "ice-password" -> {
+                    if (servent.loginPassword != null) {
+                        if (context.getHeader(name).length() < 64) {
+                            servent.loginPassword = context.getHeader(name);
+                        }
                     }
                 }
-            } else if (name.equals("content-type")) {
-                String arg = context.getHeader(name);
-//log.debug("content-type: value: " + arg);
-                if (arg.indexOf(Peercast.MIME_OGG) >= 0) {
-                    info.contentType = ChannelInfo.ContentType.OGG;
-                } else if (arg.indexOf(Peercast.MIME_XOGG) >= 0) {
-                    info.contentType = ChannelInfo.ContentType.OGG;
+                case "content-type" -> {
+                    String arg = context.getHeader(name);
+//logger.log(Level.DEBUG, "content-type: value: " + arg);
+                    if (arg.contains(Peercast.MIME_OGG)) {
+                        info.contentType = ChannelInfo.ContentType.OGG;
+                    } else if (arg.contains(Peercast.MIME_XOGG)) {
+                        info.contentType = ChannelInfo.ContentType.OGG;
 
-                } else if (arg.indexOf(Peercast.MIME_MP3) >= 0) {
-                    info.contentType = ChannelInfo.ContentType.MP3;
-                } else if (arg.indexOf(Peercast.MIME_XMP3) >= 0) {
-                    info.contentType = ChannelInfo.ContentType.MP3;
+                    } else if (arg.contains(Peercast.MIME_MP3)) {
+                        info.contentType = ChannelInfo.ContentType.MP3;
+                    } else if (arg.contains(Peercast.MIME_XMP3)) {
+                        info.contentType = ChannelInfo.ContentType.MP3;
 
-                } else if (arg.indexOf(Peercast.MIME_WMA) >= 0) {
-                    info.contentType = ChannelInfo.ContentType.WMA;
-                } else if (arg.indexOf(Peercast.MIME_WMV) >= 0) {
-                    info.contentType = ChannelInfo.ContentType.WMV;
-                } else if (arg.indexOf(Peercast.MIME_ASX) >= 0) {
-                    info.contentType = ChannelInfo.ContentType.ASX;
+                    } else if (arg.contains(Peercast.MIME_WMA)) {
+                        info.contentType = ChannelInfo.ContentType.WMA;
+                    } else if (arg.contains(Peercast.MIME_WMV)) {
+                        info.contentType = ChannelInfo.ContentType.WMV;
+                    } else if (arg.contains(Peercast.MIME_ASX)) {
+                        info.contentType = ChannelInfo.ContentType.ASX;
 
-                } else if (arg.indexOf(Peercast.MIME_NSV) >= 0) {
-                    info.contentType = ChannelInfo.ContentType.NSV;
-                } else if (arg.indexOf(Peercast.MIME_RAW) >= 0) {
-                    info.contentType = ChannelInfo.ContentType.RAW;
+                    } else if (arg.contains(Peercast.MIME_NSV)) {
+                        info.contentType = ChannelInfo.ContentType.NSV;
+                    } else if (arg.contains(Peercast.MIME_RAW)) {
+                        info.contentType = ChannelInfo.ContentType.RAW;
 
-                } else if (arg.indexOf(Peercast.MIME_MMS) >= 0) {
-                    info.srcProtocol = ChannelInfo.Protocol.MMS;
-                } else if (arg.indexOf(Peercast.MIME_XPCP) >= 0) {
-                    info.srcProtocol = ChannelInfo.Protocol.PCP;
-                } else if (arg.indexOf(Peercast.MIME_XPEERCAST) >= 0) {
-                    info.srcProtocol = ChannelInfo.Protocol.PEERCAST;
+                    } else if (arg.contains(Peercast.MIME_MMS)) {
+                        info.srcProtocol = ChannelInfo.Protocol.MMS;
+                    } else if (arg.contains(Peercast.MIME_XPCP)) {
+                        info.srcProtocol = ChannelInfo.Protocol.PCP;
+                    } else if (arg.contains(Peercast.MIME_XPEERCAST)) {
+                        info.srcProtocol = ChannelInfo.Protocol.PEERCAST;
 
-                } else if (arg.indexOf(Peercast.MIME_XSCPLS) >= 0) {
-                    info.contentType = ChannelInfo.ContentType.PLS;
-                } else if (arg.indexOf(Peercast.MIME_PLS) >= 0) {
-                    info.contentType = ChannelInfo.ContentType.PLS;
-                } else if (arg.indexOf(Peercast.MIME_XPLS) >= 0) {
-                    info.contentType = ChannelInfo.ContentType.PLS;
-                } else if (arg.indexOf(Peercast.MIME_M3U) >= 0) {
-                    info.contentType = ChannelInfo.ContentType.PLS;
-                } else if (arg.indexOf(Peercast.MIME_MPEGURL) >= 0) {
-                    info.contentType = ChannelInfo.ContentType.PLS;
-                } else if (arg.indexOf(Peercast.MIME_TEXT) >= 0) {
-                    info.contentType = ChannelInfo.ContentType.PLS;
+                    } else if (arg.contains(Peercast.MIME_XSCPLS)) {
+                        info.contentType = ChannelInfo.ContentType.PLS;
+                    } else if (arg.contains(Peercast.MIME_PLS)) {
+                        info.contentType = ChannelInfo.ContentType.PLS;
+                    } else if (arg.contains(Peercast.MIME_XPLS)) {
+                        info.contentType = ChannelInfo.ContentType.PLS;
+                    } else if (arg.contains(Peercast.MIME_M3U)) {
+                        info.contentType = ChannelInfo.ContentType.PLS;
+                    } else if (arg.contains(Peercast.MIME_MPEGURL)) {
+                        info.contentType = ChannelInfo.ContentType.PLS;
+                    } else if (arg.contains(Peercast.MIME_TEXT)) {
+                        info.contentType = ChannelInfo.ContentType.PLS;
+                    }
                 }
-//log.debug("content-type: " + info.contentType);
+//logger.log(Level.DEBUG, "content-type: " + info.contentType);
             }
         }
     }
@@ -6641,7 +6605,7 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
             info.contentType = ChannelInfo.ContentType.MP3;
         }
 
-        // log.debug(String.format("ICY %s", http.cmdLine));
+        // logger.log(Level.DEBUG, String.format("ICY %s", http.cmdLine));
         readICYHeader(request, info, this);
 
         // check password before anything else, if needed
@@ -6660,7 +6624,7 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
         info.id = channelManager.broadcastID;
         info.id.encode(null, info.name, loginMount, (byte) info.bitrate);
 
-        log.debug(String.format("Incoming source: %s : %s", info.name, info.contentType.name()));
+        logger.log(Level.DEBUG, String.format("Incoming source: %s : %s", info.name, info.contentType.name()));
 
         if (isHTTP) {
             response.setStatus(HttpServletResponse.SC_OK);
@@ -6670,7 +6634,7 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
 
         Channel c = channelManager.findChannelByID(info.id);
         if (c != null) {
-            log.debug("ICY channel already active, closing old one");
+            logger.log(Level.DEBUG, "ICY channel already active, closing old one");
             c.streaming.cancel(true);
         }
 
@@ -6693,7 +6657,7 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
 
         fileName += fn;
 
-        log.debug("HTML client");
+        logger.log(Level.DEBUG, "HTML client");
 
         int args = fileName.indexOf("?");
         if (args > 0) {
@@ -6732,7 +6696,7 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
     }
 
     /** */
-    void handshakeRemoteFile(HttpServletResponse response, final String dirName) throws IOException {
+    void handshakeRemoteFile(HttpServletResponse response, String dirName) throws IOException {
 
         final String hostName = "www.peercast.org"; // hardwired for "security"
 
@@ -6775,7 +6739,7 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
     }
 
     /** */
-    Object readTemplate(InputStream inputStream) {
+    static Object readTemplate(InputStream inputStream) {
         // TODO inputStream -> response
         return null;
     }
@@ -6856,5 +6820,3 @@ Debug.println("==== ONE PROCESS DONE: " + sock.getRemoteSocketAddress());
 
     Cookie cookie;
 }
-
-/* */

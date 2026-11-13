@@ -18,6 +18,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
@@ -27,33 +29,28 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.w3c.dom.Element;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import vavi.net.http.HttpContext;
 import vavi.net.http.HttpProtocol;
 import vavi.net.http.HttpUtil;
-import vavi.util.Debug;
-import vavi.util.Singleton;
+
+import static java.lang.System.getLogger;
 
 
 /**
  * Channel.
  *
- * @version 4-apr-2002
  * @author giles
+ * @version 4-apr-2002
  */
 class Channel {
 
-    /** */
-    private static final Log log = LogFactory.getLog(Channel.class);
+    private static final Logger logger = getLogger(Channel.class.getName());
 
     /** */
-    private final ServentManager serverManager = Singleton.getInstance(ServentManager.class);
+    private final ServentManager serverManager = Peercast.serventManager;
 
     /** */
-    private final ChannelManager channelManager = Singleton.getInstance(ChannelManager.class);
+    private final ChannelManager channelManager = Peercast.channelManager;
 
     /** */
     enum Status {
@@ -115,7 +112,7 @@ class Channel {
     boolean checkBump() {
         if (!isBroadcasting() && !sourceHost.tracker) {
             if (rawData.lastWriteTime != 0 && ((System.currentTimeMillis() - rawData.lastWriteTime) > 30 * 1000)) {
-                log.error(String.format("Ch.%d Auto bumped", index));
+                logger.log(Level.ERROR, String.format("Ch.%d Auto bumped", index));
                 bump = true;
             }
         }
@@ -145,43 +142,35 @@ class Channel {
         try {
             while (!streaming.isCancelled() && !Peercast.getInstance().isQuitting) {
                 if (checkIdle()) {
-                    log.debug(String.format("Ch.%d idle", index));
+                    logger.log(Level.DEBUG, String.format("Ch.%d idle", index));
                     break;
                 }
 
                 if (checkBump()) {
-                    log.debug(String.format("Ch.%d bumped", index));
+                    logger.log(Level.DEBUG, String.format("Ch.%d bumped", index));
                     error = -1;
                     break;
                 }
 
-//new Exception("***DUMMY***: " + is.available()).printStackTrace();
-                if (is.available() <= 0) {
-                    log.debug(String.format("Ch.%d eof", index));
+                error = source.readPacket(is, this);
+
+                if (error != 0) {
                     break;
                 }
 
-                if (is.available() > 0) {
-                    error = source.readPacket(is, this);
-
-                    if (error != 0) {
-                        break;
-                    }
-
-                    if (rawData.writePos > 0) {
-                        if (isBroadcasting()) {
-                            if ((System.currentTimeMillis() - lastTrackerUpdate) >= channelManager.hostUpdateInterval) {
-                                GnuID noID = new GnuID();
-                                noID.clear();
-                                broadcastTrackerUpdate(noID, false);
-                            }
-                            wasBroadcasting = true;
-
-                        } else {
-                            setStatus(Status.RECEIVING);
+                if (rawData.writePos > 0) {
+                    if (isBroadcasting()) {
+                        if ((System.currentTimeMillis() - lastTrackerUpdate) >= channelManager.hostUpdateInterval) {
+                            GnuID noID = new GnuID();
+                            noID.clear();
+                            broadcastTrackerUpdate(noID, false);
                         }
-                        source.updateStatus(this);
+                        wasBroadcasting = true;
+
+                    } else {
+                        setStatus(Status.RECEIVING);
                     }
+                    source.updateStatus(this);
                 }
 
                 try {
@@ -190,7 +179,7 @@ class Channel {
                 }
             }
         } catch (IOException e) {
-            log.error(String.format("readStream: %s", e.getMessage()));
+            logger.log(Level.ERROR, String.format("readStream: %s", e.getMessage()));
             error = -1;
         }
 
@@ -210,7 +199,7 @@ class Channel {
     }
 
     /** */
-    boolean writeVariable(OutputStream out, final String var, int index) throws IOException {
+    boolean writeVariable(OutputStream out, String var, int index) throws IOException {
         String buf = null;
 
         if (var.equals("name")) {
@@ -257,17 +246,14 @@ class Channel {
             buf = info.id.toString();
         } else if (var.startsWith("track.")) {
 
-            if (var.equals("track.title")) {
-                buf = info.track.title;
-            } else if (var.equals("track.artist")) {
-                buf = info.track.artist;
-            } else if (var.equals("track.album")) {
-                buf = info.track.album;
-            } else if (var.equals("track.genre")) {
-                buf = info.track.genre;
-            } else if (var.equals("track.contactURL")) {
-                buf = info.track.contact;
-            }
+            buf = switch (var) {
+                case "track.title" -> info.track.title;
+                case "track.artist" -> info.track.artist;
+                case "track.album" -> info.track.album;
+                case "track.genre" -> info.track.genre;
+                case "track.contactURL" -> info.track.contact;
+                default -> buf;
+            };
 
         } else if (var.equals("contactURL")) {
             buf = String.format("%s", info.url);
@@ -278,7 +264,7 @@ class Channel {
         } else if (var.equals("sourceProtocol")) {
             buf = info.srcProtocol.name();
         } else if (var.equals("sourceURL")) {
-            if (sourceURL.length() ==0) {
+            if (sourceURL.isEmpty()) {
                 buf = sourceHost.getAddress().toString();
             } else {
                 buf = sourceURL;
@@ -350,13 +336,13 @@ class Channel {
     /** */
     void newPacket(ChannelPacket packet) {
         if (packet.type != ChannelPacket.Type.PCP) {
-            rawData.writePacket(packet, true);
+            rawData.writePacket(packet, false);
         }
     }
 
     /** */
     boolean checkIdle() {
-//Debug.println(String.format("idle: %b, uptime: %d, prefetchtime: %d, listeners: %d, stay: %b, status: %s", info.getUptime() > channelManager.prefetchTime && localListeners() == 0 && !stayConnected && !status.equals(Status.BROADCASTING), info.getUptime(), channelManager.prefetchTime, localListeners(), stayConnected, status));
+//logger.log(Level.TRACE, String.format("idle: %b, uptime: %d, prefetchtime: %d, listeners: %d, stay: %b, status: %s", info.getUptime() > channelManager.prefetchTime && localListeners() == 0 && !stayConnected && !status.equals(Status.BROADCASTING), info.getUptime(), channelManager.prefetchTime, localListeners(), stayConnected, status));
         return info.getUptime() > channelManager.prefetchTime && localListeners() == 0 && !stayConnected && !status.equals(Status.BROADCASTING);
     }
 
@@ -407,7 +393,7 @@ class Channel {
     }
 
     /** */
-    void startURL(final String url) {
+    void startURL(String url) {
         sourceURL = url;
 
         sourceType = SourceType.URL;
@@ -433,7 +419,7 @@ class Channel {
     void sleepUntil(double time) {
         double sleepTime = time - (System.currentTimeMillis() - startTime);
 
-        // log.debug("sleep %g", sleepTime);
+//logger.log(Level.DEBUG, "sleep %f".formatted(sleepTime));
         if (sleepTime > 0) {
             if (sleepTime > 60) {
                 sleepTime = 60;
@@ -463,11 +449,12 @@ class Channel {
 
     /** */
     final Runnable stream = new Runnable() {
+        @Override
         public void run() {
-Debug.println("+++ Channel thread started");
+            logger.log(Level.TRACE, "+++ Channel thread started");
             try {
                 while (!Peercast.getInstance().isQuitting) {
-                    log.debug(String.format("Ch.%d started", index));
+                    logger.log(Level.DEBUG, String.format("Ch.%d started", index));
 
                     ChannelHitList chl = channelManager.findHitList(info);
                     if (chl == null) {
@@ -477,10 +464,10 @@ Debug.println("+++ Channel thread started");
                     try {
                         sourceData.stream(Channel.this);
                     } catch (IOException e) {
-                        e.printStackTrace();
+                        logger.log(Level.ERROR, e.getMessage(), e);
                     }
 
-                    log.debug(String.format("Ch.%d stopped", index));
+                    logger.log(Level.DEBUG, String.format("Ch.%d stopped", index));
 
                     if (!stayConnected) {
                         break;
@@ -491,7 +478,7 @@ Debug.println("+++ Channel thread started");
 
                         long diff = (System.currentTimeMillis() - info.lastPlayEnd) + 5000;
 
-                        log.debug(String.format("Ch.%d sleeping for %d micro seconds", index, diff));
+                        logger.log(Level.DEBUG, String.format("Ch.%d sleeping for %d micro seconds", index, diff));
                         for (int i = 0; i < diff; i++) {
                             if (Peercast.getInstance().isQuitting) {
                                 break;
@@ -504,7 +491,7 @@ Debug.println("+++ Channel thread started");
                     }
                 }
             } catch (Throwable t) {
-                t.printStackTrace();
+                logger.log(Level.ERROR, t.getMessage(), t);
             } finally {
                 try {
                     if (pushSock != null) {
@@ -517,9 +504,9 @@ Debug.println("+++ Channel thread started");
                         sock = null;
                     }
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    logger.log(Level.ERROR, e.getMessage(), e);
                 }
-Debug.println("--- Channel thread stopped");
+                logger.log(Level.TRACE, "--- Channel thread stopped");
             }
         }
     };
@@ -540,9 +527,9 @@ Debug.println("--- Channel thread stopped");
 
         if (sourceHost.tracker || sourceHost.yp) {
             sock.setSoTimeout(30 * 1000);
-            log.debug(String.format("Ch.%d using longer timeouts", index));
+            logger.log(Level.DEBUG, String.format("Ch.%d using longer timeouts", index));
         }
-Debug.println("address: " + sourceHost.getAddress() + ": @" + sourceHost.hashCode());
+        logger.log(Level.TRACE, "address: " + sourceHost.getAddress() + ": @" + sourceHost.hashCode());
         sock.connect(sourceHost.getAddress());
     }
 
@@ -556,14 +543,14 @@ Debug.println("address: " + sourceHost.getAddress() + ": @" + sourceHost.hashCod
         requestContext.setRemoteHost(sock.getInetAddress().getHostName());
         requestContext.setRemotePort(sock.getPort());
         requestContext.setMethod("GET");
-        requestContext.setRequestURI("/channel/" +  info.id.toString());
+        requestContext.setRequestURI("/channel/" + info.id.toString());
         requestContext.setProtocol(new HttpProtocol());
         requestContext.setHeader(GnuPacket.PCX_HS_POS, String.valueOf(streamPos));
         requestContext.setHeader(GnuPacket.PCX_HS_PCP, "1");
 
         HttpContext responseContext = HttpUtil.postRequest(requestContext, sock);
 
-log.debug("Got response: " + responseContext.getStatus());
+        logger.log(Level.DEBUG, "Got response: " + responseContext.getStatus());
         if (responseContext.getStatus() != 200 && responseContext.getStatus() != 503) {
             return responseContext.getStatus();
         }
@@ -571,7 +558,7 @@ log.debug("Got response: " + responseContext.getStatus());
         String value = responseContext.getHeader(GnuPacket.PCX_HS_POS);
         streamPos = value != null ? Integer.parseInt(value) : 0;
         Servent.readICYHeader(responseContext, info, null);
-//log.debug("Channel fetch: " + http.cmdLine);
+//logger.log(Level.DEBUG, "Channel fetch: " + http.cmdLine);
 
         if (rawData.getLatestPos() > streamPos) {
             rawData = new ChannelPacketBuffer();
@@ -677,7 +664,7 @@ log.debug("Got response: " + responseContext.getStatus());
             int count = serverManager.broadcastPacket(packet, serverManager.sessionID, serventID, null, Servent.Type.COUT); // TODO check null
 
             if (count != 0) {
-                log.debug(String.format("Sent tracker update for %s to %d client(s)", info.name, count));
+                logger.log(Level.DEBUG, String.format("Sent tracker update for %s to %d client(s)", info.name, count));
                 lastTrackerUpdate = currentTime;
             }
         }
@@ -769,12 +756,16 @@ log.debug("Got response: " + responseContext.getStatus());
         return status.equals(Status.RECEIVING) || status.equals(Status.BROADCASTING);
     }
 
+    boolean isError() {
+        return status.equals(Status.ERROR);
+    }
+
     boolean isReceiving() {
         return status.equals(Status.RECEIVING);
     }
 
     boolean isBroadcasting() {
-//Debug.println(StringUtil.paramString(this));
+//logger.log(Level.TRACE, StringUtil.paramString(this));
         return status.equals(Status.BROADCASTING);
     }
 
@@ -857,5 +848,3 @@ log.debug("Got response: " + responseContext.getStatus());
 
     double startTime = 0, syncTime = 0;
 }
-
-/* */

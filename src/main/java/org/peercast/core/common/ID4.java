@@ -29,7 +29,7 @@ import java.util.Arrays;
  */
 class ID4 {
 
-    private byte[] cv = new byte[4];
+    private final byte[] cv = new byte[4];
 
     ID4() {
     }
@@ -38,7 +38,7 @@ class ID4 {
         ByteBuffer.wrap(cv).asIntBuffer().put(i);
     }
 
-    ID4(final String id) {
+    ID4(String id) {
         for (int i = 0; i < id.length(); i++) {
             cv[i] = (byte) id.charAt(i);
         }
@@ -74,12 +74,10 @@ class ID4 {
     /** */
     public static ID4 read(InputStream in) throws IOException {
         ID4 id = new ID4();
-        int r = in.read(id.cv, 0, 4);
+        int r = in.readNBytes(id.cv, 0, 4);
         if (r != 4) {
             throw new EOFException();
         }
         return id;
     }
 }
-
-/* */

@@ -21,8 +21,8 @@ import java.io.OutputStream;
 /**
  * Stats.
  *
- * @version 4-apr-2002
  * @author giles
+ * @version 4-apr-2002
  */
 class Stats {
 
@@ -137,7 +137,7 @@ class Stats {
     }
 
     /** */
-    boolean writeVariable(OutputStream out, final String var) throws IOException {
+    boolean writeVariable(OutputStream out, String var) throws IOException {
         String buf;
 
         if (var == "totalInPerSec") {
@@ -203,5 +203,3 @@ class Stats {
 
     long lastUpdate;
 }
-
-/* */

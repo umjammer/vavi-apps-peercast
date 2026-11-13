@@ -11,12 +11,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 
+import javax.xml.parsers.ParserConfigurationException;
+
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-
 import org.xml.sax.SAXException;
-
-import vavi.util.Singleton;
 
 
 /**
@@ -27,9 +26,9 @@ import vavi.util.Singleton;
  */
 class PeercastStream extends ChannelStream {
 
-    private ChannelManager chanMgr = Singleton.getInstance(ChannelManager.class);
+    private final ChannelManager chanMgr = Peercast.channelManager;
 
-    /** */
+    @Override
     int readHeader(InputStream is, Channel channel) throws IOException {
         byte[] tp = new byte[4];
         int l = is.read(tp, 0, 4);
@@ -39,12 +38,12 @@ class PeercastStream extends ChannelStream {
         return l;
     }
 
-    /** */
+    @Override
     int readEnd(InputStream is, Channel channel) throws IOException {
         return 0;
     }
 
-    /** */
+    @Override
     int readPacket(InputStream is, Channel channel) throws IOException {
         ChannelPacket pack = new ChannelPacket();
 
@@ -53,42 +52,40 @@ class PeercastStream extends ChannelStream {
         ByteArrayInputStream mem = new ByteArrayInputStream(pack.data);
 
         switch (pack.type) {
-        case HEAD:
-            // update sync pos
-            channel.headPack = pack;
-            pack.pos = channel.streamPos;
-            channel.newPacket(pack);
-            channel.streamPos += pack.data.length;
-            break;
-        case DATA:
-            pack.pos = channel.streamPos;
-            channel.newPacket(pack);
-            channel.streamPos += pack.data.length;
-            break;
-        case META:
-            channel.insertMeta.fromMem(pack.data, pack.data.length);
-            if (pack.data.length != 0) {
-                Document xml;
-                try {
-                    xml = Peercast.db.parse(mem);
-                } catch (SAXException e) {
-                    throw (IOException) new IOException().initCause(e);
-                }
-                Element n = (Element) xml.getElementsByTagName("channel").item(0);
-                if (n != null) {
-                    ChannelInfo newInfo = channel.info;
-                    newInfo.updateFromXML(n);
-                    ChannelHitList chl = chanMgr.findHitList(channel.info);
-                    if (chl != null) {
-                        newInfo.updateFromXML(n);
+            case HEAD:
+                // update sync pos
+                channel.headPack = pack;
+                pack.pos = channel.streamPos;
+                channel.newPacket(pack);
+                channel.streamPos += pack.data.length;
+                break;
+            case DATA:
+                pack.pos = channel.streamPos;
+                channel.newPacket(pack);
+                channel.streamPos += pack.data.length;
+                break;
+            case META:
+                channel.insertMeta.fromMem(pack.data, pack.data.length);
+                if (pack.data.length != 0) {
+                    Document xml;
+                    try {
+                        xml = Peercast.newDocumentBuilder().parse(mem);
+                    } catch (SAXException | ParserConfigurationException e) {
+                        throw new IOException(e);
                     }
-                    channel.updateInfo(newInfo);
+                    Element n = (Element) xml.getElementsByTagName("channel").item(0);
+                    if (n != null) {
+                        ChannelInfo newInfo = channel.info;
+                        newInfo.updateFromXML(n);
+                        ChannelHitList chl = chanMgr.findHitList(channel.info);
+                        if (chl != null) {
+                            newInfo.updateFromXML(n);
+                        }
+                        channel.updateInfo(newInfo);
+                    }
                 }
-            }
-            break;
+                break;
         }
         return 0;
     }
 }
-
-/* */

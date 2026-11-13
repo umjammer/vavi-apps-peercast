@@ -21,21 +21,22 @@ import java.io.InputStream;
 /**
  * MP3Stream.
  *
- * @version 28-may-2003
  * @author giles
+ * @version 28-may-2003
  */
 class MP3Stream extends ChannelStream {
-    /** */
+
+    @Override
     int readEnd(InputStream is, Channel channel) throws IOException {
         return 0;
     }
 
-    /** */
+    @Override
     int readHeader(InputStream is, Channel channel) throws IOException {
         return 0;
     }
 
-    /** */
+    @Override
     int readPacket(InputStream is, Channel channel) throws IOException {
         ChannelPacket pack = null;
 
@@ -49,30 +50,59 @@ class MP3Stream extends ChannelStream {
                     rl = ChannelManager.MAX_METAINT;
                 }
 
-                pack = new ChannelPacket(ChannelPacket.Type.DATA, pack.data, rl, channel.streamPos);
-                is.read(pack.data, 0, pack.data.length);
+                pack = new ChannelPacket();
+                pack.type = ChannelPacket.Type.DATA;
+                pack.data = new byte[rl];
+                pack.pos = channel.streamPos;
+                int n = is.read(pack.data, 0, rl);
+                if (n == -1) {
+                    return -1;
+                }
+                if (n < rl) {
+                    byte[] actualData = new byte[n];
+                    System.arraycopy(pack.data, 0, actualData, 0, n);
+                    pack.data = actualData;
+                }
                 channel.newPacket(pack);
                 channel.checkReadDelay(pack.data.length);
                 channel.streamPos += pack.data.length;
 
-                rlen -= rl;
+                rlen -= n;
             }
 
             int len;
             len = is.read();
+            if (len == -1) {
+                return -1;
+            }
             if (len > 0) {
-                if (len * 16 > 1024) {
-                    len = 1024 / 16;
+                int metaLen = len * 16;
+                byte[] buf = new byte[metaLen];
+                int read = 0;
+                while (read < metaLen) {
+                    int n = is.read(buf, read, metaLen - read);
+                    if (n == -1) {
+                        return -1;
+                    }
+                    read += n;
                 }
-                byte[] buf = new byte[1024];
-                is.read(buf, 0, len * 16);
                 channel.processMp3Metadata(buf);
             }
 
         } else {
 
-            pack = new ChannelPacket(ChannelPacket.Type.DATA, pack.data, ChannelManager.MAX_METAINT, channel.streamPos);
-            is.read(pack.data, 0, pack.data.length);
+            byte[] buf = new byte[ChannelManager.MAX_METAINT];
+            int n = is.read(buf, 0, buf.length);
+            if (n == -1) {
+                return -1;
+            }
+            // logger.log(Level.DEBUG, "MP3 read " + n + " bytes (no meta)");
+            pack = new ChannelPacket();
+            pack.type = ChannelPacket.Type.DATA;
+            pack.data = new byte[n];
+            System.arraycopy(buf, 0, pack.data, 0, n);
+            pack.pos = channel.streamPos;
+
             channel.newPacket(pack);
             channel.checkReadDelay(pack.data.length);
 
@@ -81,5 +111,3 @@ class MP3Stream extends ChannelStream {
         return 0;
     }
 }
-
-/* */

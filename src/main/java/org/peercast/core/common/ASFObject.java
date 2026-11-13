@@ -18,20 +18,21 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import static java.lang.System.getLogger;
 
 
 /**
  * ASFObject.
  *
- * @version 10-apr-2003
  * @author giles
+ * @version 10-apr-2003
  */
 class ASFObject {
 
-    Log log = LogFactory.getLog(ASFObject.class);
+    private static final Logger logger = getLogger(ASFObject.class.getName());
 
     enum TYPE {
         T_UNKNOWN,
@@ -66,7 +67,7 @@ class ASFObject {
             type = TYPE.T_STREAM_BITRATE;
         }
         String str = id.toString();
-        log.debug(String.format("ASF: %s (%s)= %d : %d\n", str, getTypeName(), lenLo, lenHi));
+        logger.log(Level.DEBUG, String.format("ASF: %s (%s)= %d : %d\n", str, getTypeName(), lenLo, lenHi));
 
         dataLen = 0;
 
@@ -93,20 +94,14 @@ class ASFObject {
     }
 
     final String getTypeName() {
-        switch (type) {
-        case T_HEAD_OBJECT:
-            return "ASF_Header_Object";
-        case T_DATA_OBJECT:
-            return "ASF_Data_Object";
-        case T_FILE_PROP:
-            return "ASF_File_Properties_Object";
-        case T_STREAM_PROP:
-            return "ASF_Stream_Properties_Object";
-        case T_STREAM_BITRATE:
-            return "ASF_Stream_Bitrate_Properties_Object";
-        default:
-            return "Unknown_Object";
-        }
+        return switch (type) {
+            case T_HEAD_OBJECT -> "ASF_Header_Object";
+            case T_DATA_OBJECT -> "ASF_Data_Object";
+            case T_FILE_PROP -> "ASF_File_Properties_Object";
+            case T_STREAM_PROP -> "ASF_Stream_Properties_Object";
+            case T_STREAM_BITRATE -> "ASF_Stream_Bitrate_Properties_Object";
+            default -> "Unknown_Object";
+        };
     }
 
     byte[] data = new byte[8192];
@@ -117,5 +112,3 @@ class ASFObject {
 
     TYPE type;
 }
-
-/* */

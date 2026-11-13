@@ -9,6 +9,7 @@ package org.peercast.core.common;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 
 import vavi.io.LittleEndianDataInputStream;
 
@@ -28,7 +29,7 @@ public class AtomInputStream {
         dataLength = 0;
     }
 
-    /** */
+//    /** */
 //    private void checkData(int d) throws IOException {
 //        if (dataLength != d) {
 //            throw new IOException("Bad atom data");
@@ -37,6 +38,7 @@ public class AtomInputStream {
 
     /**
      * below two fields will be orver written.
+     *
      * @see #childCount
      * @see #dataLength
      */
@@ -67,7 +69,7 @@ public class AtomInputStream {
      */
     void skip(int c, int d) throws IOException {
         if (d != 0) {
-            dis.skip(d);
+            skipFully(d);
         }
 
         for (int i = 0; i < c; i++) {
@@ -107,7 +109,8 @@ public class AtomInputStream {
     /** */
     int readBytes(byte[] bytes, int length) throws IOException {
 //        checkData(length);
-        return dis.read(bytes, 0, length);
+        dis.readFully(bytes, 0, length);
+        return length;
     }
 
     /** TODO max check */
@@ -115,8 +118,8 @@ public class AtomInputStream {
         byte[] bytes = new byte[max];
 //        checkData(length);
         readBytes(bytes, max, length);
-//System.err.print("\n" + StringUtil.getDump(bytes));
-        return new String(bytes, 0, length - 1, "UTF-8");
+//logger.log(Level.DEBUG, "\n" + StringUtil.getDump(bytes));
+        return new String(bytes, 0, length - 1, StandardCharsets.UTF_8);
     }
 
     /** */
@@ -126,7 +129,7 @@ public class AtomInputStream {
             readBytes(bytes, dataLength);
         } else {
             readBytes(bytes, max);
-            dis.skip(dataLength - max);
+            skipFully(dataLength - max);
         }
     }
 
@@ -139,10 +142,22 @@ public class AtomInputStream {
                 rlen = length;
             }
 
-            dis.read(tmp, 0, rlen);
+            dis.readFully(tmp, 0, rlen);
             os.write(tmp, 0, rlen);
 
             length -= rlen;
+        }
+    }
+
+    /** skips exactly n bytes, a socket stream may skip less than requested */
+    private void skipFully(int n) throws IOException {
+        while (n > 0) {
+            int r = dis.skipBytes(n);
+            if (r <= 0) {
+                dis.readUnsignedByte(); // blocks or throws EOFException
+                r = 1;
+            }
+            n -= r;
         }
     }
 
@@ -152,7 +167,5 @@ public class AtomInputStream {
 
     int childCount, dataLength;
 
-    private LittleEndianDataInputStream dis;
+    private final LittleEndianDataInputStream dis;
 }
-
-/* */

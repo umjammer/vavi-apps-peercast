@@ -6,15 +6,14 @@
 
 package org.peercast.core.common;
 
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.w3c.dom.Element;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-import vavi.util.Singleton;
+import static java.lang.System.getLogger;
 
 
 /**
@@ -24,8 +23,8 @@ import vavi.util.Singleton;
  * @version 0.00 050811 nsano initial version <br>
  */
 class ChannelHitList {
-    /** */
-    private static Log log = LogFactory.getLog(ChannelHitList.class);
+
+    private static final Logger logger = getLogger(ChannelHitList.class.getName());
 
     /** */
     Element createHitsXML() {
@@ -100,10 +99,10 @@ class ChannelHitList {
     /** */
     ChannelHit addHit(ChannelHit newHit) {
 //new Exception().printStackTrace(System.err);
-log.debug(String.format("Add hit: %s , %s : %s", newHit.remoteAddresses[0], newHit.remoteAddresses[1], newHit.sessionID));
+        logger.log(Level.DEBUG, String.format("Add hit: %s , %s : %s", newHit.remoteAddresses[0], newHit.remoteAddresses[1], newHit.sessionID));
 
         // dont add our own hits
-        final ServentManager serventManager = Singleton.getInstance(ServentManager.class);
+        ServentManager serventManager = Peercast.serventManager;
         if (serventManager.sessionID.equals(newHit.sessionID)) {
             return null;
         }
@@ -112,12 +111,10 @@ log.debug(String.format("Add hit: %s , %s : %s", newHit.remoteAddresses[0], newH
         newHit.time = lastHitTime;
 
         for (ChannelHit hit : hits) {
-//Debug.println("hit: " + hit.getAddress() + ", " + hit.remoteAddresses[0] + ", " + hit.sessionID);
+//logger.log(Level.TRACE, "hit: " + hit.getAddress() + ", " + hit.remoteAddresses[0] + ", " + hit.sessionID);
             if (hit.remoteAddresses[0] != null && hit.remoteAddresses[0].equals(newHit.remoteAddresses[0])) {
                 if (hit.remoteAddresses[1] == null || hit.remoteAddresses[1].equals(newHit.remoteAddresses[1])) {
-                    if (!hit.dead) {
-                        hits.set(hits.indexOf(hit), newHit);
-                    }
+                    hits.set(hits.indexOf(hit), newHit);
                     return newHit;
                 }
             }
@@ -167,27 +164,23 @@ log.debug(String.format("Add hit: %s , %s : %s", newHit.remoteAddresses[0], newH
 
     /** */
     void deadHit(ChannelHit targetHit) {
-        log.debug(String.format("Dead hit: %s , %s", targetHit.remoteAddresses[0], targetHit.remoteAddresses[1]));
+        logger.log(Level.DEBUG, String.format("Dead hit: %s , %s", targetHit.remoteAddresses[0], targetHit.remoteAddresses[1]));
 
-        for (ChannelHit hit : hits) {
-            if (hit.getAddress() != null) {
-                if (hit.remoteAddresses[0].equals(targetHit.remoteAddresses[0]) && ((hit.remoteAddresses[1] == null && targetHit.remoteAddresses[1] == null) || hit.remoteAddresses[1].equals(targetHit.remoteAddresses[1]))) {
-                    hit.dead = true;
-log.debug(String.format("*** Dead hit: %s , %s", hit.remoteAddresses[0], hit.remoteAddresses[1]));
-                }
-            }
-        }
+        hits.removeIf(hit -> hit.getAddress() != null &&
+                hit.remoteAddresses[0].equals(targetHit.remoteAddresses[0]) &&
+                ((hit.remoteAddresses[1] == null && targetHit.remoteAddresses[1] == null) ||
+                        (hit.remoteAddresses[1] != null && hit.remoteAddresses[1].equals(targetHit.remoteAddresses[1]))));
     }
 
     /** */
     void deleteHit(ChannelHit targetHit) {
-        log.debug(String.format("Del hit: %s , %s", targetHit.remoteAddresses[0], targetHit.remoteAddresses[1]));
+        logger.log(Level.DEBUG, String.format("Del hit: %s , %s", targetHit.remoteAddresses[0], targetHit.remoteAddresses[1]));
 
         for (ChannelHit hit : hits) {
             if (hit.getAddress() != null) {
                 if (hit.remoteAddresses[0].equals(targetHit.remoteAddresses[0]) && ((hit.remoteAddresses[1] == null && targetHit.remoteAddresses[1] == null) || hit.remoteAddresses[1].equals(targetHit.remoteAddresses[1]))) {
                     hit.init();
-log.debug(String.format("*** Del hit: %s , %s", hit.remoteAddresses[0], hit.remoteAddresses[1]));
+                    logger.log(Level.DEBUG, String.format("*** Del hit: %s , %s", hit.remoteAddresses[0], hit.remoteAddresses[1]));
                 }
             }
         }
@@ -355,14 +348,14 @@ log.debug(String.format("*** Del hit: %s , %s", hit.remoteAddresses[0], hit.remo
             if (o.remoteAddresses[0] == null) {
 new Exception("*** DUMMY *** : " + o.getAddress()).printStackTrace();
             }
-log.debug("add: " + o.getAddress() + ", " + o.remoteAddresses[0] + ": " + o.sessionID);
+logger.log(Level.DEBUG, "add: " + o.getAddress() + ", " + o.remoteAddresses[0] + ": " + o.sessionID);
             return super.add(o);
         }
         public ChanHit set(int i, ChanHit o) {
             if (o.remoteAddresses[0] == null) {
 new Exception("*** DUMMY *** : " + o.getAddress()).printStackTrace();
             }
-log.debug("set: " + o.getAddress() + ", " + o.remoteAddresses[0] + ": " + o.sessionID);
+logger.log(Level.DEBUG, "set: " + o.getAddress() + ", " + o.remoteAddresses[0] + ": " + o.sessionID);
             return super.set(i, o);
         }
     } */;
@@ -371,5 +364,3 @@ log.debug("set: " + o.getAddress() + ", " + o.remoteAddresses[0] + ": " + o.sess
 
     int index;
 }
-
-/* */
