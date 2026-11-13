@@ -14,8 +14,6 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 
 import javax.xml.parsers.ParserConfigurationException;
 
@@ -183,14 +181,50 @@ enum PlayList {
         }
     }
 
-    /** */
-    void addChannel(String path, ChannelInfo info) {
+    /**
+     * @return false when the channel has no id and its name can't be in a url as is
+     */
+    boolean addChannel(String path, ChannelInfo info) {
 
         // the name may come from a request path or the network, never write it raw
-        String nid = info.id.isSet() ? info.id.toString() : URLEncoder.encode(String.valueOf(info.name), StandardCharsets.UTF_8);
+        String nid = info.id.isSet() ? info.id.toString() : urlSafeName(info.name);
+        if (nid == null) {
+            logger.log(Level.DEBUG, "channel has no id and an unsafe name, skip");
+            return false;
+        }
 
         String url = String.format("%s/stream/%s%s", path, nid, info.contentType.extention);
         addURL(url, info.name);
+        return true;
+    }
+
+    /** url path characters which are harmless in any playlist format, '%' is for an already encoded name */
+    private static final char[] URL_SAFE = new char[128];
+
+    static {
+        for (char c : "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~%".toCharArray()) {
+            URL_SAFE[c] = c;
+        }
+    }
+
+    /**
+     * the request path is not decoded, so a name is used as is, but only when all of its characters are url safe.
+     * characters are copied from the table, not from the name.
+     * @return null when the name is empty or contains other characters
+     */
+    static String urlSafeName(String name) {
+        if (name == null || name.isEmpty()) {
+            return null;
+        }
+        StringBuilder sb = new StringBuilder(name.length());
+        for (int i = 0; i < name.length(); i++) {
+            int c = name.charAt(i);
+            if (c >= URL_SAFE.length || URL_SAFE[c] == 0) {
+                return null;
+            }
+            sb.append(URL_SAFE[c]);
+        }
+        return sb.toString();
     }
 
     /** a playlist entry is one line, drops line breaks and other control characters */

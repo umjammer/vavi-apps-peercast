@@ -37,18 +37,26 @@ class PlayListTest {
     }
 
     @Test
-    void testNameIsEncoded() {
+    void testUnsafeNameIsRejected() {
         ChannelInfo info = new ChannelInfo();
         info.name = EVIL;
         for (PlayList type : new PlayList[] {PlayList.PLS, PlayList.SCPLS, PlayList.ASX, PlayList.RAM}) {
-            String s = write(type, info);
-            for (String line : s.split("\n")) {
-                assertFalse(line.startsWith("X-Injected"), type + ": line injected: " + s);
-                if (line.contains("http://")) { // urls must be encoded, titles are plain text
-                    assertFalse(line.contains("<script>"), type + ": " + s);
-                }
-            }
+            type.init(1);
+            assertFalse(type.addChannel("http://localhost:7144", info), type.toString());
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            type.write(out);
+            String s = out.toString(StandardCharsets.UTF_8);
+            assertFalse(s.contains("<script>"), type + ": " + s);
+            assertFalse(s.contains("X-Injected"), type + ": " + s);
         }
+    }
+
+    @Test
+    void testSafeNameIsKept() {
+        ChannelInfo info = new ChannelInfo();
+        info.name = "%E3%81%82-ch_1.x~";
+        String s = write(PlayList.PLS, info);
+        assertTrue(s.contains("/stream/%E3%81%82-ch_1.x~"), s);
     }
 
     @Test

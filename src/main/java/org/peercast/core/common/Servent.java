@@ -5732,10 +5732,13 @@ class Servent {
                 type = PlayList.PLS;
             }
 
-            setPLSHeader(response, type);
-
             type.init(1);
-            type.addChannel(url, info);
+            if (!type.addChannel(url, info)) {
+                response.sendError(HttpServletResponse.SC_NOT_FOUND);
+                return;
+            }
+
+            setPLSHeader(response, type);
             type.write(response.getOutputStream());
         }
     }
